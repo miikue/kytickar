@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Rod {
+  id      Int      @id @default(autoincrement())
+  nazev   String   @unique
+  popis   String?
+  druhy   Druh[]
+
+  @@map("rody")
+}
+
+model Media {
+  id            Int       @id @default(autoincrement())
+  nazev         String    @unique
+  popis         String?
+  rostliny      Rostlina[]
+
+  @@map("media")
+}
+
+model Druh {
+  id         Int        @id @default(autoincrement())
+  nazev      String     @unique
+  popis      String?
+  rodId      Int?       @map("rod_id")
+  fotka1Name String?    @map("fotka1_name")
+  fotka2Name String?    @map("fotka2_name")
+  rod        Rod?       @relation(fields: [rodId], references: [id])
+  rostliny   Rostlina[]
+
+  @@map("druhy")
+}
+
+model Umisteni {
+  id           Int        @id @default(autoincrement())
+  nazev        String
+  parentId     Int?       @map("parent_id")
+  parent       Umisteni?  @relation("UmisteniHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Umisteni[] @relation("UmisteniHierarchy")
+  rostliny     Rostlina[]
+
+  @@map("umisteni")
+}
+
+model Rostlina {
+  id             Int            @id @default(autoincrement())
+  vlastniJmeno   String         @map("vlastni_jmeno")
+  aktualniZdravi Int            @default(5) @map("aktualni_zdravi")
+  datumPorizeni  DateTime       @default(now()) @map("datum_porizeni")
+  mediumId       Int?           @map("medium_id")
+  umisteniId     Int?           @map("umisteni_id")
+  druhId         Int            @map("druh_id")
+  medium         Media?         @relation(fields: [mediumId], references: [id])
+  umisteni       Umisteni?      @relation(fields: [umisteniId], references: [id])
+  druh           Druh           @relation(fields: [druhId], references: [id], onDelete: Cascade)
+  historiePece   HistoriePece[]
+  odlozeneAkce   OdlozenaAkce[]
+  galerieFotky   GalerieFotka[]
+
+  @@map("rostliny")
+}
+
+model TypAkce {
+  id            Int            @id @default(autoincrement())
+  typAkce       String         @map("typ_akce")
+  historiePece  HistoriePece[]
+  odlozeneAkce  OdlozenaAkce[]
+
+  @@map("typy_akci")
+}
+
+model HistoriePece {
+  id          Int       @id @default(autoincrement())
+  rostlinaId  Int       @map("rostlina_id")
+  datum       DateTime  @default(now())
+  typAkceId   Int       @map("typ_akce_id")
+  rostlina    Rostlina  @relation(fields: [rostlinaId], references: [id], onDelete: Cascade)
+  typAkce     TypAkce   @relation(fields: [typAkceId], references: [id])
+
+  @@map("historie_pece")
+}
+
+model OdlozenaAkce {
+  id               Int       @id @default(autoincrement())
+  rostlinaId       Int       @map("rostlina_id")
+  datum            DateTime
+  datumPripomenuti DateTime  @map("datum_pripomenuti")
+  typAkceId        Int       @map("typ_akce_id")
+  rostlina         Rostlina  @relation(fields: [rostlinaId], references: [id], onDelete: Cascade)
+  typAkce          TypAkce   @relation(fields: [typAkceId], references: [id])
+
+  @@map("odlozene_akce")
+}
+
+model GalerieFotka {
+  id            Int       @id @default(autoincrement())
+  rostlinaId    Int       @map("rostlina_id")
+  fotkaName     String    @map("fotka_name")
+  datumPorizeni DateTime  @default(now()) @map("datum_porizeni")
+  poznamka      String?
+  rostlina      Rostlina  @relation(fields: [rostlinaId], references: [id], onDelete: Cascade)
+
+  @@map("galerie_fotky")
+}
