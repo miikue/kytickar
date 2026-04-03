@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory=/root/kytickar/app
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5173
+ExecStart=/usr/bin/env node ./node_modules/vite/bin/vite.js preview --host 0.0.0.0 --port 5173
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production
