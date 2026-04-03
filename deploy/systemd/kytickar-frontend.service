@@ -6,7 +6,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/kytickar/app
-ExecStart=/bin/sh -lc 'npm run preview -- --host 0.0.0.0 --port 5173'
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5173
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production

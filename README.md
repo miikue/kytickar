@@ -40,7 +40,7 @@ chmod +x setup.sh
 
 ```bash
 cd app/backend
-npm ci
+npm install
 npx prisma migrate deploy
 npm run db:seed
 ```
@@ -60,7 +60,7 @@ Otevri druhy terminal:
 
 ```bash
 cd kytickar/app
-npm ci
+npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
@@ -82,7 +82,7 @@ Pokud chces, aby app bezela i po odhlaseni/restartu VM, pouzij systemd.
 
 ```bash
 cd app
-npm ci
+npm install
 npm run build
 ```
 
@@ -92,6 +92,15 @@ V repu jsou pripravene sablony (bezici jako root):
 
 - `deploy/systemd/kytickar-backend.service`
 - `deploy/systemd/kytickar-frontend.service`
+
+Automaticky (doporuceno):
+
+```bash
+chmod +x setup-services.sh
+sudo ./setup-services.sh
+```
+
+Nebo rucne:
 
 Zkopiruj je:
 
@@ -125,8 +134,8 @@ sudo journalctl -u kytickar-frontend -f
 ### 6) Po update kodu
 
 ```bash
-cd ~/kytickar/app/backend && npm ci
-cd ~/kytickar/app && npm ci && npm run build
+cd ~/kytickar/app/backend && npm install
+cd ~/kytickar/app && npm install && npm run build
 
 sudo systemctl restart kytickar-backend
 sudo systemctl restart kytickar-frontend

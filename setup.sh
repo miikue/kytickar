@@ -4,20 +4,20 @@ set -e
 echo "🌱 Kytickar - Instalace a nastaveni..."
 echo ""
 
-# Backend: npm ci
+# Backend: npm install
 echo "📦 Instaluji backend balicky..."
 cd app/backend
-npm ci
+npm install
 
 # Database: migrate + seed
 echo "🗄️  Nastavuji databazi..."
 npx prisma migrate deploy
 npm run db:seed
 
-# Frontend: npm ci + build
+# Frontend: npm install + build
 echo "🎨 Instaluji frontend balicky..."
 cd ../
-npm ci
+npm install
 
 echo "🔨 Buildim frontend..."
 npm run build

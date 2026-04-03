@@ -6,7 +6,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/kytickar/app/backend
-ExecStart=/bin/sh -lc 'npm run start'
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production
