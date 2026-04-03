@@ -77,14 +77,12 @@ npm run build
 
 ### 2) Zkopiruj service soubory do systemd
 
-V repu jsou pripravene sablony:
+V repu jsou pripravene sablony (bezici jako root):
 
 - `deploy/systemd/kytickar-backend.service`
 - `deploy/systemd/kytickar-frontend.service`
 
-Nahrad v obou souborech `__USER__` za tveho linux uzivatele.
-
-Pak je zkopiruj:
+Zkopiruj je:
 
 ```bash
 sudo cp deploy/systemd/kytickar-backend.service /etc/systemd/system/
@@ -94,9 +92,9 @@ sudo cp deploy/systemd/kytickar-frontend.service /etc/systemd/system/
 ### 3) Zapni a spust sluzby
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now kytickar-backend
-sudo systemctl enable --now kytickar-frontend
+systemctl daemon-reload
+systemctl enable --now kytickar-backend
+systemctl enable --now kytickar-frontend
 ```
 
 ### 4) Kontrola stavu

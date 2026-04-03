@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=__USER__
-WorkingDirectory=/home/__USER__/kytickar/app/backend
-ExecStart=/usr/bin/npm run start
+User=root
+WorkingDirectory=/root/kytickar/app/backend
+ExecStart=/bin/bash -c 'npm run start'
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production
