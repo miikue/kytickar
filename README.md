@@ -25,7 +25,18 @@ git clone <TVUJ_REPO_URL>
 cd kytickar
 ```
 
-### 3) Backend: instalace + DB + seed
+### 3) Automaticka instalace (balicky + DB)
+
+Pokud chces vsechno najednou:
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+**NEBO ručně po krocích:**
+
+### 3a) Backend: instalace + DB + seed
 
 ```bash
 cd app/backend
@@ -85,8 +96,8 @@ V repu jsou pripravene sablony (bezici jako root):
 Zkopiruj je:
 
 ```bash
-sudo cp deploy/systemd/kytickar-backend.service /etc/systemd/system/
-sudo cp deploy/systemd/kytickar-frontend.service /etc/systemd/system/
+cp deploy/systemd/kytickar-backend.service /etc/systemd/system/
+cp deploy/systemd/kytickar-frontend.service /etc/systemd/system/
 ```
 
 ### 3) Zapni a spust sluzby
@@ -100,8 +111,8 @@ systemctl enable --now kytickar-frontend
 ### 4) Kontrola stavu
 
 ```bash
-sudo systemctl status kytickar-backend
-sudo systemctl status kytickar-frontend
+systemctl status kytickar-backend
+systemctl status kytickar-frontend
 ```
 
 ### 5) Logy
