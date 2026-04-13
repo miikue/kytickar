@@ -25,14 +25,24 @@ git clone <TVUJ_REPO_URL>
 cd kytickar
 ```
 
-### 3) Automaticka instalace (balicky + DB)
+### 3) Setup skripty
 
-Pokud chces vsechno najednou:
+Pouze stazeni balicku:
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
+
+Vse najednou (balicky + build + DB):
+
+```bash
+chmod +x setup-all.sh
+./setup-all.sh
+```
+
+Skript `setup-all.sh` udela poradi: instalace balicku (backend + frontend) -> build frontendu -> init DB + seed.
+Init DB je samostatne ve skriptu `./init-db.sh`.
 
 **NEBO ručně po krocích:**
 
@@ -43,6 +53,12 @@ cd app/backend
 npm install
 npx prisma migrate deploy
 npm run db:seed
+```
+
+Nebo samostatne skriptem z rootu repa:
+
+```bash
+bash ./init-db.sh
 ```
 
 ### 4) Spusteni backendu
