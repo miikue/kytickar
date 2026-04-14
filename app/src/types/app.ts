@@ -1,4 +1,4 @@
-export type TabKey = 'kytky' | 'druhy' | 'media' | 'rody' | 'pridat';
+export type TabKey = 'kytky' | 'druhy' | 'media' | 'rody' | 'umisteni' | 'akce' | 'pridat';
 
 export type Medium = {
   id: number;

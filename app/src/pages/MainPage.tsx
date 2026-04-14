@@ -4,21 +4,27 @@ import KytkyPage from './KytkyPage.tsx';
 import DruhyPage from './DruhyPage.tsx';
 import MediaPage from './MediaPage.tsx';
 import RodyPage from './RodyPage.tsx';
+import UmisteniPage from './UmisteniPage.tsx';
+import TypyAkciPage from './TypyAkciPage.tsx';
 import PridatKytkuPage from './PridatKytkuPage.tsx';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDruhyManager } from '../hooks/useDruhyManager';
 import { useMediaManager } from '../hooks/useMediaManager';
 import { useRodyManager } from '../hooks/useRodyManager';
 import { useRostlinyManager } from '../hooks/useRostlinyManager';
+import { useUmisteniManager } from '../hooks/useUmisteniManager';
+import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
 import type { TabKey } from '../types/app';
 
 export default function MainPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('kytky');
-  const { rostliny, druhy, rody, media, umisteni, loading, error, reload } = useDashboardData();
+  const { rostliny, druhy, rody, media, umisteni, typyAkci, loading, error, reload } = useDashboardData();
 
   const druhyManager = useDruhyManager(reload);
   const mediaManager = useMediaManager(reload);
   const rodyManager = useRodyManager(reload);
+  const umisteniManager = useUmisteniManager(reload);
+  const typyAkciManager = useTypyAkciManager(reload);
   const rostlinyManager = useRostlinyManager(reload, () => setActiveTab('kytky'));
 
   return (
@@ -36,6 +42,12 @@ export default function MainPage() {
           </button>
           <button type="button" className={`tab-button ${activeTab === 'rody' ? 'active' : ''}`} onClick={() => setActiveTab('rody')}>
             Rody
+          </button>
+          <button type="button" className={`tab-button ${activeTab === 'umisteni' ? 'active' : ''}`} onClick={() => setActiveTab('umisteni')}>
+            Umisteni
+          </button>
+          <button type="button" className={`tab-button ${activeTab === 'akce' ? 'active' : ''}`} onClick={() => setActiveTab('akce')}>
+            Akce
           </button>
           <button type="button" className={`tab-button ${activeTab === 'pridat' ? 'active' : ''}`} onClick={() => setActiveTab('pridat')}>
             Pridat kytku
@@ -102,6 +114,34 @@ export default function MainPage() {
           removeRod={rodyManager.removeRod}
           rodMessage={rodyManager.rodMessage}
           setRodMessage={rodyManager.setRodMessage}
+        />
+      )}
+
+      {!loading && !error && activeTab === 'umisteni' && (
+        <UmisteniPage
+          umisteni={umisteni}
+          editingUmisteniId={umisteniManager.editingUmisteniId}
+          setEditingUmisteniId={umisteniManager.setEditingUmisteniId}
+          umisteniForm={umisteniManager.umisteniForm}
+          setUmisteniForm={umisteniManager.setUmisteniForm}
+          submitUmisteni={umisteniManager.submitUmisteni}
+          removeUmisteni={umisteniManager.removeUmisteni}
+          umisteniMessage={umisteniManager.umisteniMessage}
+          setUmisteniMessage={umisteniManager.setUmisteniMessage}
+        />
+      )}
+
+      {!loading && !error && activeTab === 'akce' && (
+        <TypyAkciPage
+          typyAkci={typyAkci}
+          editingTypAkceId={typyAkciManager.editingTypAkceId}
+          setEditingTypAkceId={typyAkciManager.setEditingTypAkceId}
+          typAkceNazev={typyAkciManager.typAkceNazev}
+          setTypAkceNazev={typyAkciManager.setTypAkceNazev}
+          submitTypAkce={typyAkciManager.submitTypAkce}
+          removeTypAkce={typyAkciManager.removeTypAkce}
+          typAkceMessage={typyAkciManager.typAkceMessage}
+          setTypAkceMessage={typyAkciManager.setTypAkceMessage}
         />
       )}
 

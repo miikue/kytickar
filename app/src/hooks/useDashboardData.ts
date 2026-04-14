@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchDashboardData } from '../api/dashboardApi';
-import type { Druh, Medium, Rod, Rostlina, Umisteni } from '../types/app';
+import type { Druh, Medium, Rod, Rostlina, TypAkce, Umisteni } from '../types/app';
 
 export function useDashboardData() {
   const [rostliny, setRostliny] = useState<Rostlina[]>([]);
@@ -8,6 +8,7 @@ export function useDashboardData() {
   const [rody, setRody] = useState<Rod[]>([]);
   const [media, setMedia] = useState<Medium[]>([]);
   const [umisteni, setUmisteni] = useState<Umisteni[]>([]);
+  const [typyAkci, setTypyAkci] = useState<TypAkce[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +21,7 @@ export function useDashboardData() {
       setRody(data.rody);
       setMedia(data.media);
       setUmisteni(data.umisteni);
+      setTypyAkci(data.typyAkci);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Neznama chyba');
@@ -38,6 +40,7 @@ export function useDashboardData() {
     rody,
     media,
     umisteni,
+    typyAkci,
     loading,
     error,
     reload,

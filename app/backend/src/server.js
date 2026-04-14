@@ -313,7 +313,7 @@ app.delete('/api/rody/:id', async (req, res) => {
 
 app.get('/api/umisteni', async (_req, res) => {
   const data = await prisma.umisteni.findMany({
-    include: { children: true },
+    include: { children: true, parent: true },
     orderBy: [{ parentId: 'asc' }, { nazev: 'asc' }],
   });
   res.json(data);
@@ -337,6 +337,52 @@ app.post('/api/umisteni', async (req, res) => {
     return res.status(201).json(created);
   } catch (error) {
     return res.status(500).json({ message: 'Nepodarilo se vytvorit umisteni', error: String(error) });
+  }
+});
+
+app.put('/api/umisteni/:id', async (req, res) => {
+  const umisteniId = Number(req.params.id);
+  const { nazev, parentId } = req.body;
+
+  if (Number.isNaN(umisteniId)) {
+    return res.status(400).json({ message: 'id musi byt cislo' });
+  }
+
+  if (!nazev) {
+    return res.status(400).json({ message: 'Povinne pole: nazev' });
+  }
+
+  try {
+    const updated = await prisma.umisteni.update({
+      where: { id: umisteniId },
+      data: {
+        nazev: String(nazev),
+        parentId: parentId ? Number(parentId) : null,
+      },
+      include: { children: true, parent: true },
+    });
+
+    return res.json(updated);
+  } catch (error) {
+    return res.status(500).json({ message: 'Nepodarilo se upravit umisteni', error: String(error) });
+  }
+});
+
+app.delete('/api/umisteni/:id', async (req, res) => {
+  const umisteniId = Number(req.params.id);
+
+  if (Number.isNaN(umisteniId)) {
+    return res.status(400).json({ message: 'id musi byt cislo' });
+  }
+
+  try {
+    await prisma.umisteni.delete({ where: { id: umisteniId } });
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(409).json({
+      message: 'Umisteni nelze smazat. Pravdepodobne je pouzite u rostlin nebo ma potomky.',
+      error: String(error),
+    });
   }
 });
 
@@ -650,6 +696,21 @@ app.put('/api/rostliny/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/rostliny/:id', async (req, res) => {
+  const rostlinaId = Number(req.params.id);
+
+  if (Number.isNaN(rostlinaId)) {
+    return res.status(400).json({ message: 'id musi byt cislo' });
+  }
+
+  try {
+    await prisma.rostlina.delete({ where: { id: rostlinaId } });
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(500).json({ message: 'Nepodarilo se smazat rostlinu', error: String(error) });
+  }
+});
+
 app.post('/api/historie-pece', async (req, res) => {
   const { rostlinaId, typAkceId, datum } = req.body;
 
@@ -712,6 +773,70 @@ app.delete('/api/historie-pece/:id', async (req, res) => {
 app.get('/api/typy-akci', async (_req, res) => {
   const data = await prisma.typAkce.findMany({ orderBy: { typAkce: 'asc' } });
   return res.json(data);
+});
+
+app.post('/api/typy-akci', async (req, res) => {
+  const { typAkce } = req.body;
+
+  if (!typAkce) {
+    return res.status(400).json({ message: 'Povinne pole: typAkce' });
+  }
+
+  try {
+    const created = await prisma.typAkce.create({
+      data: {
+        typAkce: String(typAkce),
+      },
+    });
+
+    return res.status(201).json(created);
+  } catch (error) {
+    return res.status(500).json({ message: 'Nepodarilo se vytvorit typ akce', error: String(error) });
+  }
+});
+
+app.put('/api/typy-akci/:id', async (req, res) => {
+  const typAkceId = Number(req.params.id);
+  const { typAkce } = req.body;
+
+  if (Number.isNaN(typAkceId)) {
+    return res.status(400).json({ message: 'id musi byt cislo' });
+  }
+
+  if (!typAkce) {
+    return res.status(400).json({ message: 'Povinne pole: typAkce' });
+  }
+
+  try {
+    const updated = await prisma.typAkce.update({
+      where: { id: typAkceId },
+      data: {
+        typAkce: String(typAkce),
+      },
+    });
+
+    return res.json(updated);
+  } catch (error) {
+    return res.status(500).json({ message: 'Nepodarilo se upravit typ akce', error: String(error) });
+  }
+});
+
+app.delete('/api/typy-akci/:id', async (req, res) => {
+  const typAkceId = Number(req.params.id);
+
+  if (Number.isNaN(typAkceId)) {
+    return res.status(400).json({ message: 'id musi byt cislo' });
+  }
+
+  try {
+    await prisma.typAkce.delete({ where: { id: typAkceId } });
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(409).json({
+      message: 'Typ akce nelze smazat. Pravdepodobne je pouzit v historii pece nebo v odlozenych akcich.',
+      error: String(error),
+    });
+  }
 });
 
 app.get('/api/galerie-fotky/:rostlinaId', async (req, res) => {

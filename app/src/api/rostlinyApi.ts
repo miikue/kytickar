@@ -28,3 +28,7 @@ export async function updateRostlina(id: number, form: NewPlantPayload) {
     aktualniZdravi: Number(form.aktualniZdravi),
   });
 }
+
+export async function deleteRostlina(id: number) {
+  return apiSend<null>(`/api/rostliny/${id}`, 'DELETE');
+}

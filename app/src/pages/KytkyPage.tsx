@@ -12,7 +12,7 @@ import {
   fetchRostlinyNejdelsiOdZaliti,
   odlozitZaliti,
 } from '../api/rostlinyDetailApi';
-import { updateRostlina } from '../api/rostlinyApi';
+import { deleteRostlina, updateRostlina } from '../api/rostlinyApi';
 import type { Druh, GalerieFotka, HistoriePece, Medium, Rostlina, RostlinaOdZaliti, TypAkce, Umisteni } from '../types/app';
 
 type Props = {
@@ -238,6 +238,30 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
     setIsEditing(true);
   }
 
+  async function removeRostlina() {
+    if (!selectedRostlina) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Opravdu smazat kytku ${selectedRostlina.vlastniJmeno}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteRostlina(selectedRostlina.id);
+      setSelectedId(null);
+      setIsEditing(false);
+      setEditMessage(null);
+      setNovaAkceMessage(null);
+      setPhotoMessage(null);
+      setDetailError(null);
+      await onReload();
+    } catch (error) {
+      setEditMessage(error instanceof Error ? error.message : 'Nepodarilo se smazat kytku.');
+    }
+  }
+
   function cancelEditing() {
     if (!selectedRostlina) {
       return;
@@ -455,9 +479,14 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
                 Zpet
               </button>
               {!isEditing ? (
-                <button type="button" className="button primary" onClick={startEditing}>
-                  Editovat
-                </button>
+                <>
+                  <button type="button" className="button primary" onClick={startEditing}>
+                    Editovat
+                  </button>
+                  <button type="button" className="button secondary" onClick={removeRostlina}>
+                    Smazat
+                  </button>
+                </>
               ) : (
                 <button type="button" className="button secondary" onClick={cancelEditing}>
                   Zrusit editaci
