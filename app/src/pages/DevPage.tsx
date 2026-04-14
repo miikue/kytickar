@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import TopNavButton from '../components/TopNavButton';
 import { API_BASE_URL } from '../config';
+import { logActivity } from '../api/activityApi';
 import type { DevOverview, DevTableName, DevTableResponse } from '../types/app';
 
 export default function DevPage() {
@@ -14,6 +15,8 @@ export default function DevPage() {
   const [tableError, setTableError] = useState<string | null>(null);
 
   useEffect(() => {
+    void logActivity({ eventType: 'page_view', section: 'dev', label: 'Dev panel' }).catch(() => undefined);
+
     let active = true;
 
     async function load() {
@@ -93,6 +96,7 @@ export default function DevPage() {
         { key: 'umisteni', label: 'umisteni', value: data.counts.umisteni },
         { key: 'rostliny', label: 'rostliny', value: data.counts.rostliny },
         { key: 'typyAkci', label: 'typy_akci', value: data.counts.typyAkci },
+        { key: 'activityLog', label: 'activity_log', value: data.counts.activityLog },
         { key: 'historiePece', label: 'historie_pece', value: data.counts.historiePece },
         { key: 'odlozeneAkce', label: 'odlozene_akce', value: data.counts.odlozeneAkce },
         { key: 'galerieFotky', label: 'galerie_fotky', value: data.counts.galerieFotky },
@@ -196,6 +200,20 @@ export default function DevPage() {
                   </li>
                 ))}
                 {data.posledniHistorie.length === 0 && <li>Zatim bez zaznamu.</li>}
+              </ul>
+            </article>
+
+            <article className="table-card">
+              <h2>Posledni aktivita</h2>
+              <ul>
+                {data.posledniAktivity.map((item) => (
+                  <li key={item.id}>
+                    {new Date(item.createdAt).toLocaleString('cs-CZ')} - {item.eventType} / {item.section}
+                    {item.label ? ` - ${item.label}` : ''}
+                    {item.details ? ` | ${item.details}` : ''}
+                  </li>
+                ))}
+                {data.posledniAktivity.length === 0 && <li>Zatim bez zaznamu.</li>}
               </ul>
             </article>
           </section>

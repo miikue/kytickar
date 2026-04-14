@@ -109,3 +109,15 @@ model GalerieFotka {
 
   @@map("galerie_fotky")
 }
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  eventType String   @map("event_type")
+  section   String
+  label     String?
+  entityId  Int?     @map("entity_id")
+  details   String?
+
+  @@map("activity_log")
+}

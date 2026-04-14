@@ -50,6 +50,7 @@ const devTableQueries = {
   umisteni: () => prisma.umisteni.findMany({ orderBy: { id: 'desc' }, take: 100 }),
   rostliny: () => prisma.rostlina.findMany({ orderBy: { id: 'desc' }, take: 100 }),
   typyAkci: () => prisma.typAkce.findMany({ orderBy: { id: 'desc' }, take: 100 }),
+  activityLog: () => prisma.activityLog.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
   historiePece: () => prisma.historiePece.findMany({ orderBy: { id: 'desc' }, take: 100 }),
   odlozeneAkce: () => prisma.odlozenaAkce.findMany({ orderBy: { id: 'desc' }, take: 100 }),
   galerieFotky: () => prisma.galerieFotka.findMany({ orderBy: { id: 'desc' }, take: 100 }),
@@ -91,6 +92,30 @@ app.get('/api/files/:fileName', (req, res) => {
   }
 
   return res.sendFile(filePath);
+});
+
+app.post('/api/activity-log', async (req, res) => {
+  const { eventType, section, label, entityId, details } = req.body;
+
+  if (!eventType || !section) {
+    return res.status(400).json({ message: 'Povinne pole: eventType, section' });
+  }
+
+  try {
+    const created = await prisma.activityLog.create({
+      data: {
+        eventType: String(eventType),
+        section: String(section),
+        label: label ? String(label) : null,
+        entityId: entityId !== undefined && entityId !== null ? Number(entityId) : null,
+        details: details ? String(details) : null,
+      },
+    });
+
+    return res.status(201).json(created);
+  } catch (error) {
+    return res.status(500).json({ message: 'Nepodarilo se ulozit aktivitu', error: String(error) });
+  }
 });
 
 app.get('/api/druhy', async (_req, res) => {
@@ -553,18 +578,21 @@ app.get('/api/dev/overview', async (_req, res) => {
       umisteniCount,
       rostlinyCount,
       typyAkciCount,
+      activityLogCount,
       historieCount,
       odlozeneCount,
       galerieCount,
       posledniRostliny,
       posledniHistorie,
       posledniMedia,
+      posledniAktivity,
     ] = await Promise.all([
       prisma.media.count(),
       prisma.druh.count(),
       prisma.umisteni.count(),
       prisma.rostlina.count(),
       prisma.typAkce.count(),
+      prisma.activityLog.count(),
       prisma.historiePece.count(),
       prisma.odlozenaAkce.count(),
       prisma.galerieFotka.count(),
@@ -582,6 +610,10 @@ app.get('/api/dev/overview', async (_req, res) => {
         take: 8,
         orderBy: { id: 'desc' },
       }),
+      prisma.activityLog.findMany({
+        take: 12,
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     res.json({
@@ -592,6 +624,7 @@ app.get('/api/dev/overview', async (_req, res) => {
         umisteni: umisteniCount,
         rostliny: rostlinyCount,
         typyAkci: typyAkciCount,
+        activityLog: activityLogCount,
         historiePece: historieCount,
         odlozeneAkce: odlozeneCount,
         galerieFotky: galerieCount,
@@ -599,6 +632,7 @@ app.get('/api/dev/overview', async (_req, res) => {
       posledniRostliny,
       posledniHistorie,
       posledniMedia,
+      posledniAktivity,
     });
   } catch (error) {
     res.status(500).json({ message: 'Nepodarilo se nacist dev overview', error: String(error) });

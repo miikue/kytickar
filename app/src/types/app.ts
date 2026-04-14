@@ -23,6 +23,16 @@ export type TypAkce = {
   typAkce: string;
 };
 
+export type ActivityLog = {
+  id: number;
+  createdAt: string;
+  eventType: string;
+  section: string;
+  label: string | null;
+  entityId: number | null;
+  details: string | null;
+};
+
 export type GalerieFotka = {
   id: number;
   rostlinaId: number;
@@ -81,6 +91,7 @@ export type DevOverview = {
     umisteni: number;
     rostliny: number;
     typyAkci: number;
+    activityLog: number;
     historiePece: number;
     odlozeneAkce: number;
     galerieFotky: number;
@@ -102,6 +113,7 @@ export type DevOverview = {
     nazev: string;
     popis: string | null;
   }>;
+  posledniAktivity: ActivityLog[];
 };
 
 export type DevTableName =
@@ -110,6 +122,7 @@ export type DevTableName =
   | 'umisteni'
   | 'rostliny'
   | 'typyAkci'
+  | 'activityLog'
   | 'historiePece'
   | 'odlozeneAkce'
   | 'galerieFotky';

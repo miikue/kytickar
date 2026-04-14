@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { logActivity } from '../api/activityApi';
 import { createMedium, deleteMedium, updateMedium } from '../api/mediaApi';
 
 export function useMediaManager(reload: () => Promise<void>) {
@@ -13,6 +14,7 @@ export function useMediaManager(reload: () => Promise<void>) {
     setMediaMessage(null);
 
     try {
+      const currentLabel = mediaNazev.trim();
       if (editingMediaId) {
         await updateMedium(editingMediaId, { nazev: mediaNazev, popis: mediaPopis || null });
       } else {
@@ -20,6 +22,12 @@ export function useMediaManager(reload: () => Promise<void>) {
       }
 
       setMediaMessage(editingMediaId ? 'Medium upraveno.' : 'Medium vytvoreno.');
+      void logActivity({
+        eventType: editingMediaId ? 'update' : 'create',
+        section: 'media',
+        label: currentLabel,
+        entityId: editingMediaId,
+      }).catch(() => undefined);
       setEditingMediaId(null);
       setMediaNazev('');
       setMediaPopis('');
@@ -34,6 +42,7 @@ export function useMediaManager(reload: () => Promise<void>) {
 
     try {
       await deleteMedium(id);
+      void logActivity({ eventType: 'delete', section: 'media', label: mediaNazev.trim() || null, entityId: id }).catch(() => undefined);
 
       if (editingMediaId === id) {
         setEditingMediaId(null);

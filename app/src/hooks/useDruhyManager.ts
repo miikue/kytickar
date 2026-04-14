@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { logActivity } from '../api/activityApi';
 import { deleteDruh, saveDruh } from '../api/druhyApi';
 
 type DruhForm = {
@@ -30,6 +31,7 @@ export function useDruhyManager(reload: () => Promise<void>) {
     setDruhMessage(null);
 
     try {
+      const currentLabel = druhForm.nazev.trim();
       await saveDruh({
         editingDruhId,
         form: druhForm,
@@ -38,6 +40,12 @@ export function useDruhyManager(reload: () => Promise<void>) {
       });
 
       setDruhMessage(editingDruhId ? 'Druh upraven.' : 'Druh vytvoren.');
+      void logActivity({
+        eventType: editingDruhId ? 'update' : 'create',
+        section: 'druhy',
+        label: currentLabel,
+        entityId: editingDruhId,
+      }).catch(() => undefined);
       setEditingDruhId(null);
       setDruhForm({ nazev: '', popis: '', rodId: '' });
       setUploadingDruhPhotos({ fotka1: null, fotka2: null });
@@ -53,6 +61,7 @@ export function useDruhyManager(reload: () => Promise<void>) {
 
     try {
       await deleteDruh(id);
+      void logActivity({ eventType: 'delete', section: 'druhy', label: druhForm.nazev.trim() || null, entityId: id }).catch(() => undefined);
 
       if (editingDruhId === id) {
         setEditingDruhId(null);

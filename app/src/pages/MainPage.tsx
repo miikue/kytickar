@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TopNavButton from '../components/TopNavButton';
 import KytkyPage from './KytkyPage.tsx';
 import DruhyPage from './DruhyPage.tsx';
@@ -14,6 +14,7 @@ import { useRodyManager } from '../hooks/useRodyManager';
 import { useRostlinyManager } from '../hooks/useRostlinyManager';
 import { useUmisteniManager } from '../hooks/useUmisteniManager';
 import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
+import { logActivity } from '../api/activityApi';
 import type { TabKey } from '../types/app';
 
 export default function MainPage() {
@@ -26,6 +27,20 @@ export default function MainPage() {
   const umisteniManager = useUmisteniManager(reload);
   const typyAkciManager = useTypyAkciManager(reload);
   const rostlinyManager = useRostlinyManager(reload, () => setActiveTab('kytky'));
+
+  useEffect(() => {
+    const labels: Record<TabKey, string> = {
+      kytky: 'Kytky',
+      druhy: 'Druhy',
+      media: 'Media',
+      rody: 'Rody',
+      umisteni: 'Umisteni',
+      akce: 'Akce',
+      pridat: 'Pridat kytku',
+    };
+
+    void logActivity({ eventType: 'tab_view', section: activeTab, label: labels[activeTab] }).catch(() => undefined);
+  }, [activeTab]);
 
   return (
     <main className="shell">

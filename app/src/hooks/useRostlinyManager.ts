@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { createDruh } from '../api/druhyApi';
+import { logActivity } from '../api/activityApi';
 import { createGalerieFotka } from '../api/galerieFotkyApi';
 import { createMedium } from '../api/mediaApi';
 import { createRod } from '../api/rodyApi';
@@ -78,6 +79,7 @@ export function useRostlinyManager(reload: () => Promise<void>, setActiveTab: (t
       }
 
       setPlantMessage('Kytka pridana.');
+      void logActivity({ eventType: 'create', section: 'rostliny', label: newPlant.vlastniJmeno.trim(), entityId: createdPlant.id }).catch(() => undefined);
       setNewPlant(INITIAL_FORM);
       setInitialPhoto(null);
       setActiveTab('kytky');
@@ -109,6 +111,7 @@ export function useRostlinyManager(reload: () => Promise<void>, setActiveTab: (t
       }
 
       setNewPlant((prev) => ({ ...prev, druhId: String(created.id) }));
+      void logActivity({ eventType: 'create', section: 'druhy', label: newDruhNazev.trim(), entityId: created.id }).catch(() => undefined);
       setNewDruhNazev('');
       setNewDruhPopis('');
       setShowNewDruhForm(false);
@@ -137,6 +140,7 @@ export function useRostlinyManager(reload: () => Promise<void>, setActiveTab: (t
       }
 
       setNewDruhRodId(String(created.id));
+      void logActivity({ eventType: 'create', section: 'rody', label: newDruhRodNazev.trim(), entityId: created.id }).catch(() => undefined);
       setNewDruhRodNazev('');
       setNewDruhRodPopis('');
       setShowNewDruhRodForm(false);
@@ -164,6 +168,7 @@ export function useRostlinyManager(reload: () => Promise<void>, setActiveTab: (t
       }
 
       setNewPlant((prev) => ({ ...prev, mediumId: String(created.id) }));
+      void logActivity({ eventType: 'create', section: 'media', label: newMediumNazev.trim(), entityId: created.id }).catch(() => undefined);
       setNewMediumNazev('');
       setNewMediumPopis('');
       setShowNewMediumForm(false);
@@ -191,6 +196,7 @@ export function useRostlinyManager(reload: () => Promise<void>, setActiveTab: (t
       }
 
       setNewPlant((prev) => ({ ...prev, umisteniId: String(created.id) }));
+      void logActivity({ eventType: 'create', section: 'umisteni', label: newUmisteniNazev.trim(), entityId: created.id }).catch(() => undefined);
       setNewUmisteniNazev('');
       setShowNewUmisteniForm(false);
       setNewUmisteniMessage('Umisteni vytvoreno a vybrano.');

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { logActivity } from '../api/activityApi';
 import { createRod, deleteRod, updateRod } from '../api/rodyApi';
 
 export function useRodyManager(reload: () => Promise<void>) {
@@ -13,6 +14,7 @@ export function useRodyManager(reload: () => Promise<void>) {
     setRodMessage(null);
 
     try {
+      const currentLabel = rodNazev.trim();
       if (editingRodId) {
         await updateRod(editingRodId, { nazev: rodNazev, popis: rodPopis || null });
       } else {
@@ -20,6 +22,12 @@ export function useRodyManager(reload: () => Promise<void>) {
       }
 
       setRodMessage(editingRodId ? 'Rod upraven.' : 'Rod vytvoren.');
+      void logActivity({
+        eventType: editingRodId ? 'update' : 'create',
+        section: 'rody',
+        label: currentLabel,
+        entityId: editingRodId,
+      }).catch(() => undefined);
       setEditingRodId(null);
       setRodNazev('');
       setRodPopis('');
@@ -34,6 +42,7 @@ export function useRodyManager(reload: () => Promise<void>) {
 
     try {
       await deleteRod(id);
+      void logActivity({ eventType: 'delete', section: 'rody', label: rodNazev.trim() || null, entityId: id }).catch(() => undefined);
 
       if (editingRodId === id) {
         setEditingRodId(null);
@@ -62,6 +71,7 @@ export function useRodyManager(reload: () => Promise<void>) {
         return;
       }
 
+      void logActivity({ eventType: 'create', section: 'rody', label: params.nazev.trim(), entityId: created.id }).catch(() => undefined);
       params.onCreated(created.id);
       params.onSuccess();
       await reload();

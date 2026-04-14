@@ -12,6 +12,7 @@ import {
   fetchRostlinyNejdelsiOdZaliti,
   odlozitZaliti,
 } from '../api/rostlinyDetailApi';
+import { logActivity } from '../api/activityApi';
 import { deleteRostlina, updateRostlina } from '../api/rostlinyApi';
 import type { Druh, GalerieFotka, HistoriePece, Medium, Rostlina, RostlinaOdZaliti, TypAkce, Umisteni } from '../types/app';
 
@@ -218,6 +219,14 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
     setNovaAkceMessage(null);
     setEditMessage(null);
     setDetailError(null);
+
+    const openedPlant = rostliny.find((item) => item.id === itemId);
+    void logActivity({
+      eventType: 'open_detail',
+      section: 'kytky',
+      label: openedPlant?.vlastniJmeno || 'Rostlina',
+      entityId: itemId,
+    }).catch(() => undefined);
   }
 
   function goBackToList() {
@@ -250,6 +259,12 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
 
     try {
       await deleteRostlina(selectedRostlina.id);
+      void logActivity({
+        eventType: 'delete',
+        section: 'kytky',
+        label: selectedRostlina.vlastniJmeno,
+        entityId: selectedRostlina.id,
+      }).catch(() => undefined);
       setSelectedId(null);
       setIsEditing(false);
       setEditMessage(null);
@@ -295,6 +310,12 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
       await updateRostlina(selectedId, editForm);
       setEditMessage('Zaznam ulozen.');
       setIsEditing(false);
+      void logActivity({
+        eventType: 'update',
+        section: 'kytky',
+        label: editForm.vlastniJmeno,
+        entityId: selectedId,
+      }).catch(() => undefined);
       await onReload();
     } catch (error) {
       setEditMessage(error instanceof Error ? error.message : 'Nepodarilo se ulozit zmeny.');
@@ -312,6 +333,12 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
     try {
       await createHistoriePece({ rostlinaId: selectedId, typAkceId: Number(selectedTypAkceId) });
       setNovaAkceMessage('Akce ulozena.');
+      void logActivity({
+        eventType: 'create',
+        section: 'historie_pece',
+        label: 'Nova akce',
+        entityId: selectedId,
+      }).catch(() => undefined);
       const historieData = await fetchRostlinaHistorie(selectedId);
       setHistorie(historieData);
     } catch (error) {
@@ -340,6 +367,14 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
         poznamka: newPhotoPoznamka.trim() || null,
       });
 
+      void logActivity({
+        eventType: 'create',
+        section: 'galerie_fotky',
+        label: selectedRostlina?.vlastniJmeno || 'Rostlina',
+        entityId: selectedId,
+        details: newPhotoPoznamka.trim() || null,
+      }).catch(() => undefined);
+
       const galerieData = await fetchRostlinaGalerie(selectedId);
       setGalerie(galerieData);
       setPhotoMessage('Fotka ulozena.');
@@ -358,6 +393,12 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
 
     try {
       await deleteHistoriePece(id);
+      void logActivity({
+        eventType: 'delete',
+        section: 'historie_pece',
+        label: selectedRostlina?.vlastniJmeno || 'Rostlina',
+        entityId: id,
+      }).catch(() => undefined);
       const historieData = await fetchRostlinaHistorie(selectedId);
       setHistorie(historieData);
       setNovaAkceMessage('Akce smazana.');

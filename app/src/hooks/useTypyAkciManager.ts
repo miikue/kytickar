@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { logActivity } from '../api/activityApi';
 import { createTypAkce, deleteTypAkce, updateTypAkce } from '../api/typyAkciApi';
 
 export function useTypyAkciManager(reload: () => Promise<void>) {
@@ -12,6 +13,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
     setTypAkceMessage(null);
 
     try {
+      const currentLabel = typAkceNazev.trim();
       if (editingTypAkceId) {
         await updateTypAkce(editingTypAkceId, { typAkce: typAkceNazev });
       } else {
@@ -19,6 +21,12 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
       }
 
       setTypAkceMessage(editingTypAkceId ? 'Typ akce upraven.' : 'Typ akce vytvoren.');
+      void logActivity({
+        eventType: editingTypAkceId ? 'update' : 'create',
+        section: 'typy_akci',
+        label: currentLabel,
+        entityId: editingTypAkceId,
+      }).catch(() => undefined);
       setEditingTypAkceId(null);
       setTypAkceNazev('');
       await reload();
@@ -32,6 +40,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
 
     try {
       await deleteTypAkce(id);
+      void logActivity({ eventType: 'delete', section: 'typy_akci', label: typAkceNazev.trim() || null, entityId: id }).catch(() => undefined);
 
       if (editingTypAkceId === id) {
         setEditingTypAkceId(null);
