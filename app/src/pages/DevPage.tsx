@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import TopNavButton from '../components/TopNavButton';
 import { API_BASE_URL } from '../config';
+import { apiGet } from '../api/http';
 import { logActivity } from '../api/activityApi';
 import type { DevOverview, DevTableName, DevTableResponse } from '../types/app';
 
@@ -22,13 +23,7 @@ export default function DevPage() {
     async function load() {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/dev/overview`);
-
-        if (!response.ok) {
-          throw new Error(`Backend vratil ${response.status}`);
-        }
-
-        const payload = (await response.json()) as DevOverview;
+        const payload = await apiGet<DevOverview>('/api/dev/overview');
 
         if (active) {
           setData(payload);
@@ -58,13 +53,7 @@ export default function DevPage() {
     async function loadTable() {
       try {
         setTableLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/dev/table/${selectedTable}`);
-
-        if (!response.ok) {
-          throw new Error(`Backend vratil ${response.status}`);
-        }
-
-        const payload = (await response.json()) as DevTableResponse;
+        const payload = await apiGet<DevTableResponse>(`/api/dev/table/${selectedTable}`);
 
         if (active) {
           setSelectedRows(payload.rows);

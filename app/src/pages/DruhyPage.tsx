@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 import DruhuEditor from '../components/DruhuEditor';
-import { API_BASE_URL } from '../config';
+import { getFileUrl } from '../api/http';
 import type { Druh, Rod } from '../types/app';
 
 type DruhForm = {
@@ -51,8 +51,8 @@ export default function DruhyPage({
               <li key={item.id}>
                 <div className="druh-item">
                   <div className="druh-photos">
-                    {item.fotka1Name && <img src={`${API_BASE_URL}/api/files/${item.fotka1Name}`} alt="Fotka 1" className="druh-photo-small" />}
-                    {item.fotka2Name && <img src={`${API_BASE_URL}/api/files/${item.fotka2Name}`} alt="Fotka 2" className="druh-photo-large" />}
+                    {item.fotka1Name && <img src={getFileUrl(item.fotka1Name)} alt="Fotka 1" className="druh-photo-small" />}
+                    {item.fotka2Name && <img src={getFileUrl(item.fotka2Name)} alt="Fotka 2" className="druh-photo-large" />}
                   </div>
                   <div className="druh-info">
                     <div>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { API_BASE_URL } from '../config';
-import { uploadFile } from '../api/http';
+import { uploadFile, getFileUrl } from '../api/http';
 import { createGalerieFotka, deleteGalerieFotka } from '../api/galerieFotkyApi';
 import {
   fetchRostlinaGalerie,
@@ -443,7 +442,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
                     <button type="button" className="watering-priority-card" onClick={() => openPlantDetail(item.id)}>
                       <div className="watering-priority-image-wrap">
                         {thumb ? (
-                          <img src={`${API_BASE_URL}/api/files/${thumb.fotkaName}`} alt={item.vlastniJmeno} className="watering-priority-image" />
+                          <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="watering-priority-image" />
                         ) : (
                           <div className="watering-priority-image-empty">Bez fotky</div>
                         )}
@@ -495,7 +494,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
               >
                 <div className="plant-thumb-image-wrap">
                   {thumb ? (
-                    <img src={`${API_BASE_URL}/api/files/${thumb.fotkaName}`} alt={item.vlastniJmeno} className="plant-thumb-image" />
+                    <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="plant-thumb-image" />
                   ) : (
                     <div className="plant-thumb-placeholder">Bez fotky</div>
                   )}
@@ -601,7 +600,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
                   <div className="plant-detail-photo-shell">
                     {latestPhoto ? (
                       <button type="button" className="photo-open-button" onClick={() => setExpandedPhoto(latestPhoto)}>
-                        <img src={`${API_BASE_URL}/api/files/${latestPhoto.fotkaName}`} alt={selectedRostlina.vlastniJmeno} className="plant-detail-photo" />
+                        <img src={getFileUrl(latestPhoto.fotkaName)} alt={selectedRostlina.vlastniJmeno} className="plant-detail-photo" />
                       </button>
                     ) : (
                       <div className="plant-detail-photo-empty">Bez fotky</div>
@@ -684,7 +683,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
                       {galerie.map((item) => (
                         <figure key={item.id} className="plant-gallery-item">
                           <button type="button" className="photo-open-button" onClick={() => setExpandedPhoto(item)}>
-                            <img src={`${API_BASE_URL}/api/files/${item.fotkaName}`} alt={item.poznamka || 'Fotka rostliny'} />
+                            <img src={getFileUrl(item.fotkaName)} alt={item.poznamka || 'Fotka rostliny'} />
                           </button>
                           <figcaption>{new Date(item.datumPorizeni).toLocaleDateString('cs-CZ')}</figcaption>
                         </figure>
@@ -731,7 +730,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
         <div className="photo-modal" role="dialog" aria-modal="true">
           <button type="button" className="photo-modal-backdrop" onClick={() => setExpandedPhoto(null)} aria-label="Zavrit detail fotky" />
           <div className="photo-modal-panel">
-            <img src={`${API_BASE_URL}/api/files/${expandedPhoto.fotkaName}`} alt={expandedPhoto.poznamka || 'Zvetsena fotka'} className="photo-modal-image" />
+            <img src={getFileUrl(expandedPhoto.fotkaName)} alt={expandedPhoto.poznamka || 'Zvetsena fotka'} className="photo-modal-image" />
             <div className="photo-modal-meta">
               <p>Datum porizeni: {new Date(expandedPhoto.datumPorizeni).toLocaleDateString('cs-CZ')}</p>
               {expandedPhoto.poznamka && <p>Poznamka: {expandedPhoto.poznamka}</p>}
@@ -750,7 +749,7 @@ export default function KytkyPage({ rostliny, druhy, media, umisteni, onReload }
               </button>
               <a
                 className="icon-button modal-icon-button"
-                href={`${API_BASE_URL}/api/files/${expandedPhoto.fotkaName}`}
+                href={getFileUrl(expandedPhoto.fotkaName)}
                 download={expandedPhoto.fotkaName}
                 target="_blank"
                 rel="noreferrer"
