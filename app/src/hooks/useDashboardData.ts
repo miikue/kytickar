@@ -12,9 +12,11 @@ export function useDashboardData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (silent = true) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const data = await fetchDashboardData();
       setRostliny(data.rostliny);
       setDruhy(data.druhy);
@@ -31,7 +33,7 @@ export function useDashboardData() {
   }, []);
 
   useEffect(() => {
-    reload();
+    reload(false);
   }, [reload]);
 
   return {

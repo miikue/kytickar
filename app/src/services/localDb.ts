@@ -13,6 +13,7 @@ import type {
   TypAkce,
   Umisteni,
 } from '../types/app';
+import defaultData from '../data/defaultData.json';
 
 const DB_NAME = 'kytickar_db';
 const DB_VERSION = 1;
@@ -75,6 +76,8 @@ function openDb(): Promise<IDBDatabase> {
     request.onsuccess = async (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       await seedDbIfNeeded(db);
+      await ensureDemoPhotoFile(db);
+      await ensureTypyAkciDefaults(db);
       resolve(db);
     };
 
@@ -137,8 +140,58 @@ function deleteFromStore(db: IDBDatabase, storeName: string, key: IDBValidKey): 
 }
 
 // -------------------------------------------------------------
-// SEED DATA
+// SEED & DATA IMPORT HELPER (ČISTÝ ŠTÍT)
 // -------------------------------------------------------------
+export const ALL_DATA_STORES = [
+  'media',
+  'rody',
+  'umisteni',
+  'typyAkci',
+  'druhy',
+  'rostliny',
+  'galerieFotky',
+  'historiePece',
+  'odlozeneAkce',
+  'activityLog',
+];
+
+async function clearStore(db: IDBDatabase, storeName: string): Promise<void> {
+  if (!db.objectStoreNames.contains(storeName)) return;
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    store.clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function clearAllStores(db: IDBDatabase, clearPhotos = true): Promise<void> {
+  for (const name of ALL_DATA_STORES) {
+    await clearStore(db, name);
+  }
+  if (clearPhotos) {
+    await clearStore(db, 'photos');
+  }
+}
+
+async function applyDataToStores(db: IDBDatabase, data: any): Promise<void> {
+  for (const name of ALL_DATA_STORES) {
+    const items = data[name];
+    if (Array.isArray(items) && items.length > 0) {
+      const tx = db.transaction(name, 'readwrite');
+      const store = tx.objectStore(name);
+      for (const item of items) {
+        store.put(item);
+      }
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+  }
+}
+
 async function seedDbIfNeeded(db: IDBDatabase): Promise<void> {
   const mediaCount = await new Promise<number>((res) => {
     const tx = db.transaction('media', 'readonly');
@@ -149,85 +202,125 @@ async function seedDbIfNeeded(db: IDBDatabase): Promise<void> {
 
   if (mediaCount > 0) return;
 
-  const defaultMedia = [
-    { nazev: 'Zemina', popis: 'Univerzální substrát pro pokojovky' },
-    { nazev: 'Voda', popis: 'Čistá voda pro hydroponii nebo zakořeňování' },
-    { nazev: 'Perlit', popis: 'Anorganický materiál pro provzdušnění' },
-    { nazev: 'Kůra', popis: 'Borovicová nebo modřínová kůra' },
-    { nazev: 'Písek', popis: 'Křemičitý písek pro lepší drenáž' },
-    { nazev: 'Keramzit', popis: 'Drenážní vrstva na dno květináče' },
-    { nazev: 'Kokos', popis: 'Kokosové chipsy nebo vlákno' },
-    { nazev: 'Rašeliník', popis: 'Sphagnum moss pro air-layering' },
-  ];
+  await applyDataToStores(db, (defaultData as any).data);
+  await ensureDemoPhotoFile(db);
+  await attachDemoPhotoToSeed(db);
+}
 
-  const defaultRody = [
-    'Monstera', 'Ficus', 'Peperomia', 'Philodendron',
-    'Alocasia', 'Syngonium', 'Epipremnum', 'Sansevieria',
-    'Calathea', 'Anthurium', 'Hoya'
-  ];
-
-  const defaultTypyAkci = [
-    'Zalévání', 'Hnojení', 'Přesazování', 'Rosení',
-    'Kontrola škůdců', 'Otírání prachu', 'Stříhání'
-  ];
-
-  const defaultUmisteni = [
-    'Obývák - okno jih',
-    'Ložnice - police',
-    'Pracovna - stůl',
-    'Koupelna - parapet'
-  ];
-
-  for (const m of defaultMedia) await addToStore(db, 'media', m);
-  for (const r of defaultRody) await addToStore(db, 'rody', { nazev: r, popis: null });
-  for (const t of defaultTypyAkci) await addToStore(db, 'typyAkci', { typAkce: t });
-  for (const u of defaultUmisteni) await addToStore(db, 'umisteni', { nazev: u, parentId: null });
-
-  const rodyList = await getAllFromStore<Rod>(db, 'rody');
-  const monsteraRod = rodyList.find(r => r.nazev === 'Monstera');
-  const ficusRod = rodyList.find(r => r.nazev === 'Ficus');
-  const philoRod = rodyList.find(r => r.nazev === 'Philodendron');
-  const epipremnumRod = rodyList.find(r => r.nazev === 'Epipremnum');
-  const sansevieriaRod = rodyList.find(r => r.nazev === 'Sansevieria');
-
-  const defaultDruhy = [
-    { nazev: 'Monstera deliciosa', popis: 'Velké dekorativní listy s perforací', rodId: monsteraRod?.id || null, fotka1Name: null, fotka2Name: null },
-    { nazev: 'Monstera adansonii', popis: 'Rychle rostoucí popínavá monstera', rodId: monsteraRod?.id || null, fotka1Name: null, fotka2Name: null },
-    { nazev: 'Ficus elastica', popis: 'Pryžovník, odolný a vhodný pro začátečníky', rodId: ficusRod?.id || null, fotka1Name: null, fotka2Name: null },
-    { nazev: 'Philodendron hederaceum', popis: 'Popínavý filodendron se srdčitým listem', rodId: philoRod?.id || null, fotka1Name: null, fotka2Name: null },
-    { nazev: 'Epipremnum aureum', popis: 'Pothos, nenáročná rostlina do bytu', rodId: epipremnumRod?.id || null, fotka1Name: null, fotka2Name: null },
-    { nazev: 'Sansevieria trifasciata', popis: 'Tchýnin jazyk, snáší sušší podmínky', rodId: sansevieriaRod?.id || null, fotka1Name: null, fotka2Name: null },
-  ];
-
-  for (const d of defaultDruhy) await addToStore(db, 'druhy', d);
-
-  const druhyList = await getAllFromStore<Druh>(db, 'druhy');
-  const mediaList = await getAllFromStore<Medium>(db, 'media');
-  const umisteniList = await getAllFromStore<Umisteni>(db, 'umisteni');
-
-  const defaultRostliny = [
-    { vlastniJmeno: 'Moni', druhId: druhyList.find(d => d.nazev.includes('deliciosa'))?.id || 1, mediumId: mediaList[0]?.id || 1, umisteniId: umisteniList[0]?.id || 1, aktualniZdravi: 5, datumPorizeni: new Date().toISOString() },
-    { vlastniJmeno: 'Ada', druhId: druhyList.find(d => d.nazev.includes('adansonii'))?.id || 2, mediumId: mediaList[6]?.id || 1, umisteniId: umisteniList[2]?.id || 1, aktualniZdravi: 4, datumPorizeni: new Date().toISOString() },
-    { vlastniJmeno: 'Fikusák', druhId: druhyList.find(d => d.nazev.includes('elastica'))?.id || 3, mediumId: mediaList[0]?.id || 1, umisteniId: umisteniList[1]?.id || 1, aktualniZdravi: 4, datumPorizeni: new Date().toISOString() },
-    { vlastniJmeno: 'Philo', druhId: druhyList.find(d => d.nazev.includes('hederaceum'))?.id || 4, mediumId: mediaList[2]?.id || 1, umisteniId: umisteniList[3]?.id || 1, aktualniZdravi: 3, datumPorizeni: new Date().toISOString() },
-    { vlastniJmeno: 'Pothos', druhId: druhyList.find(d => d.nazev.includes('aureum'))?.id || 5, mediumId: mediaList[1]?.id || 1, umisteniId: umisteniList[0]?.id || 1, aktualniZdravi: 5, datumPorizeni: new Date().toISOString() },
-  ];
-
-  for (const r of defaultRostliny) {
-    const plantId = await addToStore(db, 'rostliny', r);
-    // Vlozime par historii zalivky
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-    await addToStore(db, 'historiePece', { rostlinaId: plantId, typAkceId: 1, datum: threeDaysAgo });
+export async function ensureDemoPhotoFile(db: IDBDatabase): Promise<void> {
+  try {
+    const existingPhoto = await getFromStore<{ fileName: string; dataUrl: string }>(db, 'photos', 'image.png');
+    if (!existingPhoto) {
+      try {
+        const resp = await fetch('/image.png');
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const reader = new FileReader();
+          const dataUrl = await new Promise<string>((res, rej) => {
+            reader.onloadend = () => res(reader.result as string);
+            reader.onerror = () => rej(reader.error);
+            reader.readAsDataURL(blob);
+          });
+          if (dataUrl) {
+            await putToStore(db, 'photos', { fileName: 'image.png', dataUrl });
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Nepodařilo se přednačíst /image.png do IndexedDB:', fetchErr);
+      }
+    }
+  } catch (err) {
+    console.warn('ensureDemoPhotoFile warning:', err);
   }
+}
 
-  await addToStore(db, 'activityLog', {
-    eventType: 'SEED',
-    section: 'system',
-    label: 'Inicializace databáze',
-    entityId: null,
-    details: 'Vložena výchozí data kytičkáře.',
-    createdAt: new Date().toISOString(),
-  });
+async function attachDemoPhotoToSeed(db: IDBDatabase): Promise<void> {
+  try {
+    const allFotky = await getAllFromStore<GalerieFotka>(db, 'galerieFotky');
+    if (!allFotky.some(f => f.fotkaName === 'image.png')) {
+      const plants = await getAllFromStore<any>(db, 'rostliny');
+      if (plants.length > 0) {
+        await addToStore(db, 'galerieFotky', {
+          rostlinaId: plants[0].id,
+          fotkaName: 'image.png',
+          poznamka: 'Ukázková kytice',
+          datumPorizeni: new Date().toISOString(),
+        });
+      }
+    }
+
+    const druhy = await getAllFromStore<any>(db, 'druhy');
+    if (druhy.length > 0 && !druhy[0].fotka1Name) {
+      druhy[0].fotka1Name = 'image.png';
+      await putToStore(db, 'druhy', druhy[0]);
+    }
+  } catch (err) {
+    console.warn('attachDemoPhotoToSeed warning:', err);
+  }
+}
+
+export function getDefaultActionIcon(name: string): string {
+  const n = (name || '').toLowerCase();
+  if (n.includes('zal')) return '💧';
+  if (n.includes('hnoj')) return '🌱';
+  if (n.includes('pres')) return '🪴';
+  if (n.includes('ros')) return '💨';
+  if (n.includes('skud') || n.includes('kontr')) return '🔍';
+  if (n.includes('otir') || n.includes('prach') || n.includes('cist')) return '🧽';
+  if (n.includes('str')) return '✂️';
+  if (n.includes('osetr') || n.includes('lecb')) return '🧪';
+  if (n.includes('slun') || n.includes('svet')) return '☀️';
+  if (n.includes('kvet')) return '🌸';
+  return '⚡';
+}
+
+export function getDefaultIntervalDays(name: string): number {
+  const n = (name || '').toLowerCase();
+  if (n.includes('zal')) return 7;
+  if (n.includes('hnoj')) return 14;
+  if (n.includes('pres')) return 365;
+  if (n.includes('ros')) return 2;
+  if (n.includes('skud') || n.includes('kontr')) return 14;
+  if (n.includes('otir') || n.includes('prach') || n.includes('cist')) return 21;
+  if (n.includes('str')) return 60;
+  return 7;
+}
+
+export function getDefaultSnoozeDays(name: string): number {
+  const n = (name || '').toLowerCase();
+  if (n.includes('ros')) return 1;
+  if (n.includes('zal')) return 2;
+  if (n.includes('hnoj')) return 3;
+  if (n.includes('pres')) return 14;
+  if (n.includes('str')) return 7;
+  return 2;
+}
+
+async function ensureTypyAkciDefaults(db: IDBDatabase): Promise<void> {
+  try {
+    const list = await getAllFromStore<TypAkce>(db, 'typyAkci');
+    for (const item of list) {
+      let needsUpdate = false;
+      const updated = { ...item };
+      if (!updated.ikona) {
+        updated.ikona = getDefaultActionIcon(updated.typAkce);
+        needsUpdate = true;
+      }
+      if (updated.intervalDny === undefined || updated.intervalDny === null) {
+        updated.intervalDny = getDefaultIntervalDays(updated.typAkce);
+        needsUpdate = true;
+      }
+      if (updated.odlozitDny === undefined || updated.odlozitDny === null) {
+        updated.odlozitDny = getDefaultSnoozeDays(updated.typAkce);
+        needsUpdate = true;
+      }
+      if (needsUpdate) {
+        await putToStore(db, 'typyAkci', updated);
+      }
+    }
+  } catch (err) {
+    console.warn('ensureTypyAkciDefaults warning:', err);
+  }
 }
 
 // -------------------------------------------------------------
@@ -365,8 +458,9 @@ export const localDb = {
   async deleteDruh(id: number): Promise<null> {
     const db = await openDb();
     const plants = await getAllFromStore<any>(db, 'rostliny');
-    if (plants.some(p => p.druhId === id)) {
-      throw new Error('Druh nelze smazat. Je pouzit u existujicich rostlin.');
+    const usedCount = plants.filter(p => p.druhId === id).length;
+    if (usedCount > 0) {
+      throw new Error(`Druh nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'rostlině' : usedCount < 5 ? 'rostlinám' : 'rostlinám'}. Nejprve u nich změňte druh.`);
     }
     await deleteFromStore(db, 'druhy', id);
     return null;
@@ -399,8 +493,9 @@ export const localDb = {
   async deleteRod(id: number): Promise<null> {
     const db = await openDb();
     const druhy = await getAllFromStore<Druh>(db, 'druhy');
-    if (druhy.some(d => d.rodId === id)) {
-      throw new Error('Rod nelze smazat. Je pouzit u existujicich druhu.');
+    const usedCount = druhy.filter(d => d.rodId === id).length;
+    if (usedCount > 0) {
+      throw new Error(`Rod nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'botanickému druhu' : usedCount < 5 ? 'botanickým druhům' : 'botanickým druhům'}. Nejprve u nich změňte rod.`);
     }
     await deleteFromStore(db, 'rody', id);
     return null;
@@ -433,8 +528,9 @@ export const localDb = {
   async deleteMedium(id: number): Promise<null> {
     const db = await openDb();
     const plants = await getAllFromStore<any>(db, 'rostliny');
-    if (plants.some(p => p.mediumId === id)) {
-      throw new Error('Medium nelze smazat. Je pouzite u existujicich rostlin.');
+    const usedCount = plants.filter(p => p.mediumId === id).length;
+    if (usedCount > 0) {
+      throw new Error(`Substrát nelze smazat, protože je použit u ${usedCount} ${usedCount === 1 ? 'rostliny' : usedCount < 5 ? 'rostlin' : 'rostlin'}. Nejprve u nich zvolte jiný substrát.`);
     }
     await deleteFromStore(db, 'media', id);
     return null;
@@ -474,8 +570,13 @@ export const localDb = {
       getAllFromStore<any>(db, 'rostliny'),
       getAllFromStore<Umisteni>(db, 'umisteni'),
     ]);
-    if (plants.some(p => p.umisteniId === id) || allUmisteni.some(u => u.parentId === id)) {
-      throw new Error('Umisteni nelze smazat. Je pouzite nebo ma potomky.');
+    const plantsCount = plants.filter(p => p.umisteniId === id).length;
+    const childrenCount = allUmisteni.filter(u => u.parentId === id).length;
+    if (plantsCount > 0) {
+      throw new Error(`Umístění nelze smazat, protože v něm máte ${plantsCount} ${plantsCount === 1 ? 'rostlinu' : plantsCount < 5 ? 'rostliny' : 'rostlin'}. Nejprve je přesuňte jinam.`);
+    }
+    if (childrenCount > 0) {
+      throw new Error(`Umístění nelze smazat, protože obsahuje ${childrenCount} podřízených umístění. Nejprve je přesuňte nebo smažte.`);
     }
     await deleteFromStore(db, 'umisteni', id);
     return null;
@@ -489,7 +590,21 @@ export const localDb = {
 
   async createTypAkce(payload: any): Promise<TypAkce> {
     const db = await openDb();
-    const id = await addToStore(db, 'typyAkci', { typAkce: String(payload.typAkce) });
+    const name = String(payload.typAkce || '').trim();
+    const ikona = payload.ikona ? String(payload.ikona).trim() : getDefaultActionIcon(name);
+    const intervalDny = payload.intervalDny !== undefined && payload.intervalDny !== null && payload.intervalDny !== ''
+      ? Number(payload.intervalDny)
+      : getDefaultIntervalDays(name);
+    const odlozitDny = payload.odlozitDny !== undefined && payload.odlozitDny !== null && payload.odlozitDny !== ''
+      ? Number(payload.odlozitDny)
+      : getDefaultSnoozeDays(name);
+
+    const id = await addToStore(db, 'typyAkci', {
+      typAkce: name,
+      ikona,
+      intervalDny,
+      odlozitDny,
+    });
     return (await getFromStore<TypAkce>(db, 'typyAkci', id))!;
   },
 
@@ -497,7 +612,18 @@ export const localDb = {
     const db = await openDb();
     const existing = await getFromStore<TypAkce>(db, 'typyAkci', id);
     if (!existing) throw new Error('Typ akce nenalezen');
-    const updated = { ...existing, typAkce: String(payload.typAkce) };
+    const name = payload.typAkce !== undefined ? String(payload.typAkce).trim() : existing.typAkce;
+    const ikona = payload.ikona !== undefined
+      ? (payload.ikona ? String(payload.ikona).trim() : getDefaultActionIcon(name))
+      : (existing.ikona || getDefaultActionIcon(name));
+    const intervalDny = payload.intervalDny !== undefined
+      ? (payload.intervalDny !== null && payload.intervalDny !== '' ? Number(payload.intervalDny) : null)
+      : existing.intervalDny;
+    const odlozitDny = payload.odlozitDny !== undefined
+      ? (payload.odlozitDny !== null && payload.odlozitDny !== '' ? Number(payload.odlozitDny) : null)
+      : existing.odlozitDny;
+
+    const updated = { ...existing, typAkce: name, ikona, intervalDny, odlozitDny };
     await putToStore(db, 'typyAkci', updated);
     return updated;
   },
@@ -505,8 +631,9 @@ export const localDb = {
   async deleteTypAkce(id: number): Promise<null> {
     const db = await openDb();
     const historie = await getAllFromStore<HistoriePece>(db, 'historiePece');
-    if (historie.some(h => h.typAkceId === id)) {
-      throw new Error('Typ akce nelze smazat. Je pouzit v historii pece.');
+    const usedCount = historie.filter(h => h.typAkceId === id).length;
+    if (usedCount > 0) {
+      throw new Error(`Typ péče nelze smazat, protože je zaznamenán v historii péče (${usedCount} ${usedCount === 1 ? 'záznam' : usedCount < 5 ? 'záznamy' : 'záznamů'}).`);
     }
     await deleteFromStore(db, 'typyAkci', id);
     return null;
@@ -633,6 +760,7 @@ export const localDb = {
           dnyOdPoslednihoZaliti: days,
         };
       })
+      .filter(item => item.dnyOdPoslednihoZaliti === null || item.dnyOdPoslednihoZaliti > 0)
       .sort((a, b) => {
         if (a.dnyOdPoslednihoZaliti === null && b.dnyOdPoslednihoZaliti === null) return 0;
         if (a.dnyOdPoslednihoZaliti === null) return -1;
@@ -643,7 +771,7 @@ export const localDb = {
     return payload;
   },
 
-  async odlozitZaliti(rostlinaId: number, dny: number): Promise<any> {
+  async odlozitZaliti(rostlinaId: number, dny?: number): Promise<any> {
     const db = await openDb();
     const typyAkci = await getAllFromStore<TypAkce>(db, 'typyAkci');
     const wateringTyp = typyAkci.find(item =>
@@ -651,8 +779,9 @@ export const localDb = {
     );
     if (!wateringTyp) throw new Error('Typ akce pro zalévání nenalezen');
 
+    const snoozeDays = dny || wateringTyp.odlozitDny || 2;
     const now = new Date();
-    const datumPripomenuti = new Date(now.getTime() + (dny || 2) * 24 * 60 * 60 * 1000).toISOString();
+    const datumPripomenuti = new Date(now.getTime() + snoozeDays * 24 * 60 * 60 * 1000).toISOString();
 
     const id = await addToStore(db, 'odlozeneAkce', {
       rostlinaId: Number(rostlinaId),
@@ -661,7 +790,7 @@ export const localDb = {
       datumPripomenuti,
     });
 
-    return { id, rostlinaId, typAkceId: wateringTyp.id, datumPripomenuti };
+    return { id, rostlinaId, typAkceId: wateringTyp.id, datumPripomenuti, dny: snoozeDays };
   },
 
   async logActivity(payload: any): Promise<ActivityLog> {
@@ -745,5 +874,108 @@ export const localDb = {
       rowCount: rows.length,
       rows: rows.slice(0, 100),
     };
+  },
+
+  async exportAllData(): Promise<any> {
+    const db = await openDb();
+    const [media, rody, umisteni, typyAkci, druhy, rostliny, galerieFotky, historiePece, odlozeneAkce, activityLog] =
+      await Promise.all([
+        getAllFromStore(db, 'media'),
+        getAllFromStore(db, 'rody'),
+        getAllFromStore(db, 'umisteni'),
+        getAllFromStore(db, 'typyAkci'),
+        getAllFromStore(db, 'druhy'),
+        getAllFromStore(db, 'rostliny'),
+        getAllFromStore(db, 'galerieFotky'),
+        getAllFromStore(db, 'historiePece'),
+        getAllFromStore(db, 'odlozeneAkce'),
+        getAllFromStore(db, 'activityLog'),
+      ]);
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      appName: 'Kytickar',
+      data: {
+        media,
+        rody,
+        umisteni,
+        typyAkci,
+        druhy,
+        rostliny,
+        galerieFotky,
+        historiePece,
+        odlozeneAkce,
+        activityLog,
+      },
+    };
+  },
+
+  async importAllData(payload: any): Promise<void> {
+    const db = await openDb();
+    const data =
+      payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
+        ? payload.data
+        : payload;
+
+    // 1. ČISTÝ ŠTÍT: Kompletní vymazání všech 11 úložišť včetně fotografií
+    await clearAllStores(db, true);
+
+    // 2. Vložení tabulek ze zálohy
+    await applyDataToStores(db, data);
+
+    // 3. Zajištění základního souboru image.png v úložišti photos (pro případné ikony / fallbacky)
+    await ensureDemoPhotoFile(db);
+
+    // 4. Doplnění ikon a intervalů u akcí, pokud ve starší záloze chyběly
+    await ensureTypyAkciDefaults(db);
+
+    // 5. Vyvolání události pro pročištění paměťových keší
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
+    }
+
+    const rostlinyCount = Array.isArray(data?.rostliny) ? data.rostliny.length : 0;
+    const druhyCount = Array.isArray(data?.druhy) ? data.druhy.length : 0;
+
+    await this.logActivity({
+      eventType: 'IMPORT',
+      section: 'system',
+      label: 'Obnova ze zálohy',
+      details: `Naimportována data (${rostlinyCount} rostlin, ${druhyCount} druhů)`,
+    });
+  },
+
+  async resetToDefaultData(): Promise<void> {
+    const db = await openDb();
+    await clearAllStores(db, true);
+    await applyDataToStores(db, (defaultData as any).data);
+    await ensureDemoPhotoFile(db);
+    await attachDemoPhotoToSeed(db);
+    await ensureTypyAkciDefaults(db);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
+    }
+
+    await this.logActivity({
+      eventType: 'RESET',
+      section: 'system',
+      label: 'Reset na výchozí data',
+      details: 'Obnoven výchozí dataset Kytičkáře.',
+    });
+  },
+
+  async clearAllData(clearPhotos = true): Promise<void> {
+    const db = await openDb();
+    await clearAllStores(db, clearPhotos);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
+    }
+  },
+
+  async getAllPhotos(): Promise<Array<{ fileName: string; dataUrl: string }>> {
+    const db = await openDb();
+    return await getAllFromStore<{ fileName: string; dataUrl: string }>(db, 'photos');
   },
 };

@@ -1,11 +1,24 @@
 import type { TypAkce } from '../types/app';
 import { apiSend } from './http';
 
-export async function createTypAkce(payload: { typAkce: string }) {
+export async function createTypAkce(payload: {
+  typAkce: string;
+  ikona?: string | null;
+  intervalDny?: number | null;
+  odlozitDny?: number | null;
+}) {
   return apiSend<TypAkce>('/api/typy-akci', 'POST', payload);
 }
 
-export async function updateTypAkce(id: number, payload: { typAkce: string }) {
+export async function updateTypAkce(
+  id: number,
+  payload: {
+    typAkce: string;
+    ikona?: string | null;
+    intervalDny?: number | null;
+    odlozitDny?: number | null;
+  }
+) {
   return apiSend<TypAkce>(`/api/typy-akci/${id}`, 'PUT', payload);
 }
 

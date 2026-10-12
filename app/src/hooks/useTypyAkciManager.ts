@@ -6,6 +6,9 @@ import { createTypAkce, deleteTypAkce, updateTypAkce } from '../api/typyAkciApi'
 export function useTypyAkciManager(reload: () => Promise<void>) {
   const [editingTypAkceId, setEditingTypAkceId] = useState<number | null>(null);
   const [typAkceNazev, setTypAkceNazev] = useState('');
+  const [typAkceIkona, setTypAkceIkona] = useState('💧');
+  const [typAkceInterval, setTypAkceInterval] = useState('7');
+  const [typAkceOdlozit, setTypAkceOdlozit] = useState('2');
   const [typAkceMessage, setTypAkceMessage] = useState<string | null>(null);
 
   async function submitTypAkce(event: FormEvent) {
@@ -14,24 +17,40 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
 
     try {
       const currentLabel = typAkceNazev.trim();
+      const intervalVal = typAkceInterval.trim() ? Number(typAkceInterval) : null;
+      const odlozitVal = typAkceOdlozit.trim() ? Number(typAkceOdlozit) : null;
+
       if (editingTypAkceId) {
-        await updateTypAkce(editingTypAkceId, { typAkce: typAkceNazev });
+        await updateTypAkce(editingTypAkceId, {
+          typAkce: typAkceNazev,
+          ikona: typAkceIkona,
+          intervalDny: intervalVal,
+          odlozitDny: odlozitVal,
+        });
       } else {
-        await createTypAkce({ typAkce: typAkceNazev });
+        await createTypAkce({
+          typAkce: typAkceNazev,
+          ikona: typAkceIkona,
+          intervalDny: intervalVal,
+          odlozitDny: odlozitVal,
+        });
       }
 
-      setTypAkceMessage(editingTypAkceId ? 'Typ akce upraven.' : 'Typ akce vytvoren.');
+      setTypAkceMessage(editingTypAkceId ? 'Typ akce upraven.' : 'Typ akce vytvořen.');
       void logActivity({
         eventType: editingTypAkceId ? 'update' : 'create',
         section: 'typy_akci',
-        label: currentLabel,
+        label: `${typAkceIkona} ${currentLabel}`,
         entityId: editingTypAkceId,
       }).catch(() => undefined);
       setEditingTypAkceId(null);
       setTypAkceNazev('');
+      setTypAkceIkona('💧');
+      setTypAkceInterval('7');
+      setTypAkceOdlozit('2');
       await reload();
     } catch (err) {
-      setTypAkceMessage(err instanceof Error ? err.message : 'Ulozeni typu akce selhalo.');
+      setTypAkceMessage(err instanceof Error ? err.message : 'Uložení typu akce selhalo.');
     }
   }
 
@@ -45,12 +64,17 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
       if (editingTypAkceId === id) {
         setEditingTypAkceId(null);
         setTypAkceNazev('');
+        setTypAkceIkona('💧');
+        setTypAkceInterval('7');
+        setTypAkceOdlozit('2');
       }
 
-      setTypAkceMessage('Typ akce smazan.');
+      setTypAkceMessage('Typ akce smazán.');
       await reload();
     } catch (err) {
-      setTypAkceMessage(err instanceof Error ? err.message : 'Smazani typu akce selhalo.');
+      const msg = err instanceof Error ? err.message : 'Smazání typu akce selhalo.';
+      setTypAkceMessage(msg);
+      window.alert('⚠️ ' + msg);
     }
   }
 
@@ -59,6 +83,12 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
     setEditingTypAkceId,
     typAkceNazev,
     setTypAkceNazev,
+    typAkceIkona,
+    setTypAkceIkona,
+    typAkceInterval,
+    setTypAkceInterval,
+    typAkceOdlozit,
+    setTypAkceOdlozit,
     typAkceMessage,
     setTypAkceMessage,
     submitTypAkce,

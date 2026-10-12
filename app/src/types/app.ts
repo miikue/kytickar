@@ -21,6 +21,9 @@ export type Umisteni = {
 export type TypAkce = {
   id: number;
   typAkce: string;
+  ikona?: string | null;
+  intervalDny?: number | null;
+  odlozitDny?: number | null;
 };
 
 export type ActivityLog = {

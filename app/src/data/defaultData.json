@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-12T17:00:00.000Z",
+  "appName": "Kytickar",
+  "data": {
+    "media": [
+      { "id": 1, "nazev": "Zemina", "popis": "Univerzální substrát pro pokojovky" },
+      { "id": 2, "nazev": "Voda", "popis": "Čistá voda pro hydroponii nebo zakořeňování" },
+      { "id": 3, "nazev": "Perlit", "popis": "Anorganický materiál pro provzdušnění" },
+      { "id": 4, "nazev": "Kůra", "popis": "Borovicová nebo modřínová kůra" },
+      { "id": 5, "nazev": "Písek", "popis": "Křemičitý písek pro lepší drenáž" },
+      { "id": 6, "nazev": "Keramzit", "popis": "Drenážní vrstva na dno květináče" },
+      { "id": 7, "nazev": "Kokos", "popis": "Kokosové chipsy nebo vlákno" },
+      { "id": 8, "nazev": "Rašeliník", "popis": "Sphagnum moss pro air-layering" }
+    ],
+    "rody": [
+      { "id": 1, "nazev": "Monstera", "popis": "Tropické liány a popínavé rostliny" },
+      { "id": 2, "nazev": "Ficus", "popis": "Fíkovníky a pryžovníky" },
+      { "id": 3, "nazev": "Peperomia", "popis": "Pepřince, dužnaté listy" },
+      { "id": 4, "nazev": "Philodendron", "popis": "Srdčité listy, nenáročné" },
+      { "id": 5, "nazev": "Alocasia", "popis": "Výrazná kresba listů" },
+      { "id": 6, "nazev": "Syngonium", "popis": "Šípovité listy" },
+      { "id": 7, "nazev": "Epipremnum", "popis": "Pothos, popínavé liány" },
+      { "id": 8, "nazev": "Sansevieria", "popis": "Tchýnin jazyk, sukulentní" },
+      { "id": 9, "nazev": "Calathea", "popis": "Modlivky s barevnými listy" },
+      { "id": 10, "nazev": "Anthurium", "popis": "Toulitky s voskovými květy" },
+      { "id": 11, "nazev": "Hoya", "popis": "Voskovky" }
+    ],
+    "umisteni": [
+      { "id": 1, "nazev": "Obývák - okno jih", "parentId": null },
+      { "id": 2, "nazev": "Ložnice - police", "parentId": null },
+      { "id": 3, "nazev": "Pracovna - stůl", "parentId": null },
+      { "id": 4, "nazev": "Koupelna - parapet", "parentId": null }
+    ],
+    "typyAkci": [
+      { "id": 1, "typAkce": "Zalévání", "ikona": "💧", "intervalDny": 7, "odlozitDny": 2 },
+      { "id": 2, "typAkce": "Hnojení", "ikona": "🌱", "intervalDny": 14, "odlozitDny": 3 },
+      { "id": 3, "typAkce": "Přesazování", "ikona": "🪴", "intervalDny": 365, "odlozitDny": 14 },
+      { "id": 4, "typAkce": "Rosení", "ikona": "💨", "intervalDny": 2, "odlozitDny": 1 },
+      { "id": 5, "typAkce": "Kontrola škůdců", "ikona": "🔍", "intervalDny": 14, "odlozitDny": 3 },
+      { "id": 6, "typAkce": "Otírání prachu", "ikona": "🧽", "intervalDny": 21, "odlozitDny": 5 },
+      { "id": 7, "typAkce": "Stříhání", "ikona": "✂️", "intervalDny": 60, "odlozitDny": 7 }
+    ],
+    "druhy": [
+      { "id": 1, "nazev": "Monstera deliciosa", "popis": "Velké dekorativní listy s perforací", "rodId": 1, "fotka1Name": "image.png", "fotka2Name": null },
+      { "id": 2, "nazev": "Monstera adansonii", "popis": "Rychle rostoucí popínavá monstera s otvory v listech", "rodId": 1, "fotka1Name": null, "fotka2Name": null },
+      { "id": 3, "nazev": "Ficus elastica", "popis": "Pryžovník, odolný a vhodný pro začátečníky", "rodId": 2, "fotka1Name": null, "fotka2Name": null },
+      { "id": 4, "nazev": "Philodendron hederaceum", "popis": "Popínavý filodendron se srdčitým listem", "rodId": 4, "fotka1Name": null, "fotka2Name": null },
+      { "id": 5, "nazev": "Epipremnum aureum", "popis": "Pothos, nenáročná rostlina do bytu", "rodId": 7, "fotka1Name": null, "fotka2Name": null },
+      { "id": 6, "nazev": "Sansevieria trifasciata", "popis": "Tchýnin jazyk, snáší sušší podmínky", "rodId": 8, "fotka1Name": null, "fotka2Name": null }
+    ],
+    "rostliny": [
+      { "id": 1, "vlastniJmeno": "Moni", "druhId": 1, "mediumId": 1, "umisteniId": 1, "aktualniZdravi": 5, "datumPorizeni": "2026-01-15T10:00:00.000Z" },
+      { "id": 2, "vlastniJmeno": "Ada", "druhId": 2, "mediumId": 7, "umisteniId": 3, "aktualniZdravi": 4, "datumPorizeni": "2026-02-20T12:00:00.000Z" },
+      { "id": 3, "vlastniJmeno": "Fikusák", "druhId": 3, "mediumId": 1, "umisteniId": 2, "aktualniZdravi": 4, "datumPorizeni": "2026-03-01T14:30:00.000Z" },
+      { "id": 4, "vlastniJmeno": "Philo", "druhId": 4, "mediumId": 3, "umisteniId": 4, "aktualniZdravi": 3, "datumPorizeni": "2026-03-10T09:15:00.000Z" },
+      { "id": 5, "vlastniJmeno": "Pothos", "druhId": 5, "mediumId": 2, "umisteniId": 1, "aktualniZdravi": 5, "datumPorizeni": "2026-03-25T16:00:00.000Z" }
+    ],
+    "galerieFotky": [
+      { "id": 1, "rostlinaId": 1, "fotkaName": "image.png", "poznamka": "Nádherná ukázková kytice", "datumPorizeni": "2026-04-10T11:00:00.000Z" }
+    ],
+    "historiePece": [
+      { "id": 1, "rostlinaId": 1, "typAkceId": 1, "datum": "2026-10-09T08:00:00.000Z" },
+      { "id": 2, "rostlinaId": 2, "typAkceId": 1, "datum": "2026-10-08T08:30:00.000Z" },
+      { "id": 3, "rostlinaId": 3, "typAkceId": 1, "datum": "2026-10-05T09:00:00.000Z" },
+      { "id": 4, "rostlinaId": 4, "typAkceId": 1, "datum": "2026-10-02T10:00:00.000Z" },
+      { "id": 5, "rostlinaId": 5, "typAkceId": 1, "datum": "2026-10-10T08:00:00.000Z" }
+    ],
+    "odlozeneAkce": [],
+    "activityLog": [
+      { "id": 1, "eventType": "SEED", "section": "system", "label": "Inicializace databáze", "entityId": null, "details": "Vložena výchozí data kytičkáře s fotografií.", "createdAt": "2026-10-12T10:00:00.000Z" }
+    ]
+  }
+}

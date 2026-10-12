@@ -70,10 +70,12 @@ export function useDruhyManager(reload: () => Promise<void>) {
         setUploadedDruhPhotoNames({ fotka1: '', fotka2: '' });
       }
 
-      setDruhMessage('Druh smazan.');
+      setDruhMessage('Druh smazán.');
       await reload();
     } catch (err) {
-      setDruhMessage(err instanceof Error ? err.message : 'Smazani druhu selhalo.');
+      const msg = err instanceof Error ? err.message : 'Smazání druhu selhalo.';
+      setDruhMessage(msg);
+      window.alert('⚠️ ' + msg);
     }
   }
 

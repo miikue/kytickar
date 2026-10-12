@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
-import TopNavButton from '../components/TopNavButton';
-import KytkyPage from './KytkyPage.tsx';
-import DruhyPage from './DruhyPage.tsx';
-import MediaPage from './MediaPage.tsx';
-import RodyPage from './RodyPage.tsx';
-import UmisteniPage from './UmisteniPage.tsx';
-import TypyAkciPage from './TypyAkciPage.tsx';
-import PridatKytkuPage from './PridatKytkuPage.tsx';
+import BottomNavBar, { type NavTab } from '../components/BottomNavBar';
+import KytkyPage from './KytkyPage';
+import KatalogPage from './KatalogPage';
+import PridatKytkuPage from './PridatKytkuPage';
+import SettingsPage from './SettingsPage';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDruhyManager } from '../hooks/useDruhyManager';
 import { useMediaManager } from '../hooks/useMediaManager';
@@ -15,199 +12,195 @@ import { useRostlinyManager } from '../hooks/useRostlinyManager';
 import { useUmisteniManager } from '../hooks/useUmisteniManager';
 import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
 import { logActivity } from '../api/activityApi';
-import type { TabKey } from '../types/app';
 
 export default function MainPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>('kytky');
+  const [activeTab, setActiveTab] = useState<NavTab>('kytky');
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isCatalogEditing, setIsCatalogEditing] = useState(false);
+  const [kytkyResetCounter, setKytkyResetCounter] = useState(0);
+  const [catalogResetCounter, setCatalogResetCounter] = useState(0);
   const { rostliny, druhy, rody, media, umisteni, typyAkci, loading, error, reload } = useDashboardData();
+
+  const handleCancelDetail = () => {
+    setKytkyResetCounter((c) => c + 1);
+    setIsDetailOpen(false);
+  };
+
+  const handleCancelCatalogEdit = () => {
+    setCatalogResetCounter((c) => c + 1);
+    setIsCatalogEditing(false);
+  };
+
+  const handleTabChange = (nextTab: NavTab) => {
+    if (nextTab === 'kytky') {
+      if (activeTab === 'kytky' && isDetailOpen) {
+        handleCancelDetail();
+        return;
+      }
+      handleCancelDetail();
+      setActiveTab('kytky');
+    } else if (nextTab === 'katalog') {
+      if (activeTab === 'katalog' && isCatalogEditing) {
+        handleCancelCatalogEdit();
+        return;
+      }
+      setActiveTab('katalog');
+    } else {
+      setActiveTab(nextTab);
+    }
+  };
 
   const druhyManager = useDruhyManager(reload);
   const mediaManager = useMediaManager(reload);
   const rodyManager = useRodyManager(reload);
   const umisteniManager = useUmisteniManager(reload);
   const typyAkciManager = useTypyAkciManager(reload);
-  const rostlinyManager = useRostlinyManager(reload, () => setActiveTab('kytky'));
+  const rostlinyManager = useRostlinyManager(reload, () => {
+    handleCancelDetail();
+    setActiveTab('kytky');
+  });
 
   useEffect(() => {
-    const labels: Record<TabKey, string> = {
-      kytky: 'Kytky',
-      druhy: 'Druhy',
-      media: 'Media',
-      rody: 'Rody',
-      umisteni: 'Umisteni',
-      akce: 'Akce',
-      pridat: 'Pridat kytku',
+    const labels: Record<NavTab, string> = {
+      kytky: 'Moje kytky',
+      katalog: 'Katalog',
+      pridat: 'Přidat kytku',
+      nastaveni: 'Nastavení',
     };
 
     void logActivity({ eventType: 'tab_view', section: activeTab, label: labels[activeTab] }).catch(() => undefined);
   }, [activeTab]);
 
   return (
-    <main className="shell">
-      <header className="top-row" aria-label="Hlavni navigace">
-        <section className="tabs" aria-label="Hlavni zalozky">
-          <button type="button" className={`tab-button ${activeTab === 'kytky' ? 'active' : ''}`} onClick={() => setActiveTab('kytky')}>
-            Kytky
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'druhy' ? 'active' : ''}`} onClick={() => setActiveTab('druhy')}>
-            Druhy
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>
-            Media
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'rody' ? 'active' : ''}`} onClick={() => setActiveTab('rody')}>
-            Rody
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'umisteni' ? 'active' : ''}`} onClick={() => setActiveTab('umisteni')}>
-            Umisteni
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'akce' ? 'active' : ''}`} onClick={() => setActiveTab('akce')}>
-            Akce
-          </button>
-          <button type="button" className={`tab-button ${activeTab === 'pridat' ? 'active' : ''}`} onClick={() => setActiveTab('pridat')}>
-            Pridat kytku
-          </button>
-        </section>
-        <TopNavButton />
-      </header>
-
-      <section className="workspace-head">
-        <p className="eyebrow">Kytickar</p>
-        <h1>Sprava rostlin</h1>
-        <p className="lead">Prepinani mezi seznamem kytek, editaci druhu a pridavanim nove rostliny.</p>
-      </section>
-
-      {loading && <section className="panel-single">Nacitam data...</section>}
-      {error && !loading && <section className="panel-single error-box">Chyba: {error}</section>}
-
-      {!loading && !error && activeTab === 'kytky' && <KytkyPage rostliny={rostliny} druhy={druhy} media={media} umisteni={umisteni} onReload={reload} />}
-
-      {!loading && !error && activeTab === 'druhy' && (
-        <DruhyPage
-          druhy={druhy}
-          editingDruhId={druhyManager.editingDruhId}
-          setEditingDruhId={druhyManager.setEditingDruhId}
-          druhForm={druhyManager.druhForm}
-          setDruhForm={druhyManager.setDruhForm}
-          uploadingDruhPhotos={druhyManager.uploadingDruhPhotos}
-          setUploadingDruhPhotos={druhyManager.setUploadingDruhPhotos}
-          uploadedDruhPhotoNames={druhyManager.uploadedDruhPhotoNames}
-          setUploadedDruhPhotoNames={druhyManager.setUploadedDruhPhotoNames}
-          rody={rody}
-          submitDruh={druhyManager.submitDruh}
-          removeDruh={druhyManager.removeDruh}
-          druhMessage={druhyManager.druhMessage}
-        />
+    <div className="mobile-app-container">
+      {/* Mobile Top App Bar - skryta, kdyz je otevren detail kytky */}
+      {(!isDetailOpen || activeTab !== 'kytky') && (
+        <header className="mobile-top-bar">
+          <div className="mobile-brand">
+            <span className="brand-logo-icon">🌿</span>
+            <span className="brand-title">Kytičkář</span>
+          </div>
+        </header>
       )}
 
-      {!loading && !error && activeTab === 'media' && (
-        <MediaPage
-          media={media}
-          editingMediaId={mediaManager.editingMediaId}
-          setEditingMediaId={mediaManager.setEditingMediaId}
-          mediaNazev={mediaManager.mediaNazev}
-          setMediaNazev={mediaManager.setMediaNazev}
-          mediaPopis={mediaManager.mediaPopis}
-          setMediaPopis={mediaManager.setMediaPopis}
-          submitMedia={mediaManager.submitMedia}
-          removeMedia={mediaManager.removeMedia}
-          mediaMessage={mediaManager.mediaMessage}
-          setMediaMessage={mediaManager.setMediaMessage}
-        />
-      )}
+      {/* Main scrollable content view */}
+      <main className="mobile-main-content">
+        {loading && rostliny.length === 0 && (
+          <section className="mobile-feedback-card">
+            <span className="feedback-spinner">⏳</span>
+            <p>Načítám kytičky a data...</p>
+          </section>
+        )}
 
-      {!loading && !error && activeTab === 'rody' && (
-        <RodyPage
-          rody={rody}
-          editingRodId={rodyManager.editingRodId}
-          setEditingRodId={rodyManager.setEditingRodId}
-          rodNazev={rodyManager.rodNazev}
-          setRodNazev={rodyManager.setRodNazev}
-          rodPopis={rodyManager.rodPopis}
-          setRodPopis={rodyManager.setRodPopis}
-          submitRod={rodyManager.submitRod}
-          removeRod={rodyManager.removeRod}
-          rodMessage={rodyManager.rodMessage}
-          setRodMessage={rodyManager.setRodMessage}
-        />
-      )}
+        {error && !loading && (
+          <section className="mobile-feedback-card error-card">
+            <span className="feedback-icon">⚠️</span>
+            <p>Chyba při načítání: {error}</p>
+            <button type="button" className="action-button secondary" onClick={() => reload(false)}>
+              Zkusit znovu
+            </button>
+          </section>
+        )}
 
-      {!loading && !error && activeTab === 'umisteni' && (
-        <UmisteniPage
-          umisteni={umisteni}
-          editingUmisteniId={umisteniManager.editingUmisteniId}
-          setEditingUmisteniId={umisteniManager.setEditingUmisteniId}
-          umisteniForm={umisteniManager.umisteniForm}
-          setUmisteniForm={umisteniManager.setUmisteniForm}
-          submitUmisteni={umisteniManager.submitUmisteni}
-          removeUmisteni={umisteniManager.removeUmisteni}
-          umisteniMessage={umisteniManager.umisteniMessage}
-          setUmisteniMessage={umisteniManager.setUmisteniMessage}
-        />
-      )}
+        {(!loading || rostliny.length > 0) && !error && activeTab === 'kytky' && (
+          <KytkyPage
+            rostliny={rostliny}
+            druhy={druhy}
+            media={media}
+            umisteni={umisteni}
+            onReload={reload}
+            onDetailOpenChange={setIsDetailOpen}
+            resetTrigger={kytkyResetCounter}
+          />
+        )}
 
-      {!loading && !error && activeTab === 'akce' && (
-        <TypyAkciPage
-          typyAkci={typyAkci}
-          editingTypAkceId={typyAkciManager.editingTypAkceId}
-          setEditingTypAkceId={typyAkciManager.setEditingTypAkceId}
-          typAkceNazev={typyAkciManager.typAkceNazev}
-          setTypAkceNazev={typyAkciManager.setTypAkceNazev}
-          submitTypAkce={typyAkciManager.submitTypAkce}
-          removeTypAkce={typyAkciManager.removeTypAkce}
-          typAkceMessage={typyAkciManager.typAkceMessage}
-          setTypAkceMessage={typyAkciManager.setTypAkceMessage}
-        />
-      )}
+        {(!loading || rostliny.length > 0) && !error && activeTab === 'katalog' && (
+          <KatalogPage
+            druhy={druhy}
+            media={media}
+            rody={rody}
+            umisteni={umisteni}
+            typyAkci={typyAkci}
+            druhyManager={druhyManager}
+            mediaManager={mediaManager}
+            rodyManager={rodyManager}
+            umisteniManager={umisteniManager}
+            typyAkciManager={typyAkciManager}
+            resetTrigger={catalogResetCounter}
+            onEditingChange={setIsCatalogEditing}
+          />
+        )}
 
-      {!loading && !error && activeTab === 'pridat' && (
-        <PridatKytkuPage
-          form={rostlinyManager.newPlant}
-          setForm={rostlinyManager.setNewPlant}
-          initialPhoto={rostlinyManager.initialPhoto}
-          setInitialPhoto={rostlinyManager.setInitialPhoto}
-          initialPhotoMessage={rostlinyManager.initialPhotoMessage}
-          setInitialPhotoMessage={rostlinyManager.setInitialPhotoMessage}
-          druhy={druhy}
-          rody={rody}
-          media={media}
-          umisteni={umisteni}
-          onSubmit={rostlinyManager.submitRostlina}
-          message={rostlinyManager.plantMessage}
-          showNewDruhForm={rostlinyManager.showNewDruhForm}
-          setShowNewDruhForm={rostlinyManager.setShowNewDruhForm}
-          newDruhNazev={rostlinyManager.newDruhNazev}
-          setNewDruhNazev={rostlinyManager.setNewDruhNazev}
-          newDruhPopis={rostlinyManager.newDruhPopis}
-          setNewDruhPopis={rostlinyManager.setNewDruhPopis}
-          newDruhMessage={rostlinyManager.newDruhMessage}
-          newDruhRodId={rostlinyManager.newDruhRodId}
-          setNewDruhRodId={rostlinyManager.setNewDruhRodId}
-          showNewDruhRodForm={rostlinyManager.showNewDruhRodForm}
-          setShowNewDruhRodForm={rostlinyManager.setShowNewDruhRodForm}
-          newDruhRodNazev={rostlinyManager.newDruhRodNazev}
-          setNewDruhRodNazev={rostlinyManager.setNewDruhRodNazev}
-          newDruhRodPopis={rostlinyManager.newDruhRodPopis}
-          setNewDruhRodPopis={rostlinyManager.setNewDruhRodPopis}
-          newDruhRodMessage={rostlinyManager.newDruhRodMessage}
-          createInlineDruh={rostlinyManager.createInlineDruh}
-          createInlineDruhRod={rostlinyManager.createInlineDruhRod}
-          showNewMediumForm={rostlinyManager.showNewMediumForm}
-          setShowNewMediumForm={rostlinyManager.setShowNewMediumForm}
-          newMediumNazev={rostlinyManager.newMediumNazev}
-          setNewMediumNazev={rostlinyManager.setNewMediumNazev}
-          newMediumPopis={rostlinyManager.newMediumPopis}
-          setNewMediumPopis={rostlinyManager.setNewMediumPopis}
-          newMediumMessage={rostlinyManager.newMediumMessage}
-          createInlineMedium={rostlinyManager.createInlineMedium}
-          showNewUmisteniForm={rostlinyManager.showNewUmisteniForm}
-          setShowNewUmisteniForm={rostlinyManager.setShowNewUmisteniForm}
-          newUmisteniNazev={rostlinyManager.newUmisteniNazev}
-          setNewUmisteniNazev={rostlinyManager.setNewUmisteniNazev}
-          newUmisteniMessage={rostlinyManager.newUmisteniMessage}
-          createInlineUmisteni={rostlinyManager.createInlineUmisteni}
-        />
-      )}
-    </main>
+        {(!loading || rostliny.length > 0) && !error && activeTab === 'pridat' && (
+          <section className="pridat-screen">
+            <header className="mobile-page-header">
+              <h2 className="mobile-page-title">Nová kytička</h2>
+              <p className="mobile-page-subtitle">Zadejte název, druh, substrát a výchozí fotografii</p>
+            </header>
+            <PridatKytkuPage
+              form={rostlinyManager.newPlant}
+              setForm={rostlinyManager.setNewPlant}
+              initialPhoto={rostlinyManager.initialPhoto}
+              setInitialPhoto={rostlinyManager.setInitialPhoto}
+              initialPhotoMessage={rostlinyManager.initialPhotoMessage}
+              setInitialPhotoMessage={rostlinyManager.setInitialPhotoMessage}
+              druhy={druhy}
+              rody={rody}
+              media={media}
+              umisteni={umisteni}
+              onSubmit={rostlinyManager.submitRostlina}
+              message={rostlinyManager.plantMessage}
+              showNewDruhForm={rostlinyManager.showNewDruhForm}
+              setShowNewDruhForm={rostlinyManager.setShowNewDruhForm}
+              newDruhNazev={rostlinyManager.newDruhNazev}
+              setNewDruhNazev={rostlinyManager.setNewDruhNazev}
+              newDruhPopis={rostlinyManager.newDruhPopis}
+              setNewDruhPopis={rostlinyManager.setNewDruhPopis}
+              newDruhMessage={rostlinyManager.newDruhMessage}
+              newDruhRodId={rostlinyManager.newDruhRodId}
+              setNewDruhRodId={rostlinyManager.setNewDruhRodId}
+              showNewDruhRodForm={rostlinyManager.showNewDruhRodForm}
+              setShowNewDruhRodForm={rostlinyManager.setShowNewDruhRodForm}
+              newDruhRodNazev={rostlinyManager.newDruhRodNazev}
+              setNewDruhRodNazev={rostlinyManager.setNewDruhRodNazev}
+              newDruhRodPopis={rostlinyManager.newDruhRodPopis}
+              setNewDruhRodPopis={rostlinyManager.setNewDruhRodPopis}
+              newDruhRodMessage={rostlinyManager.newDruhRodMessage}
+              createInlineDruh={rostlinyManager.createInlineDruh}
+              createInlineDruhRod={rostlinyManager.createInlineDruhRod}
+              showNewMediumForm={rostlinyManager.showNewMediumForm}
+              setShowNewMediumForm={rostlinyManager.setShowNewMediumForm}
+              newMediumNazev={rostlinyManager.newMediumNazev}
+              setNewMediumNazev={rostlinyManager.setNewMediumNazev}
+              newMediumPopis={rostlinyManager.newMediumPopis}
+              setNewMediumPopis={rostlinyManager.setNewMediumPopis}
+              newMediumMessage={rostlinyManager.newMediumMessage}
+              createInlineMedium={rostlinyManager.createInlineMedium}
+              showNewUmisteniForm={rostlinyManager.showNewUmisteniForm}
+              setShowNewUmisteniForm={rostlinyManager.setShowNewUmisteniForm}
+              newUmisteniNazev={rostlinyManager.newUmisteniNazev}
+              setNewUmisteniNazev={rostlinyManager.setNewUmisteniNazev}
+              newUmisteniMessage={rostlinyManager.newUmisteniMessage}
+              createInlineUmisteni={rostlinyManager.createInlineUmisteni}
+              onCancel={() => setActiveTab('kytky')}
+            />
+          </section>
+        )}
+
+        {(!loading || rostliny.length > 0) && !error && activeTab === 'nastaveni' && (
+          <SettingsPage onDataReload={reload} />
+        )}
+      </main>
+
+      {/* Fixed Mobile Bottom Navigation */}
+      <BottomNavBar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isDetailOpen={isDetailOpen}
+        onCancelDetail={handleCancelDetail}
+        isCatalogEditing={isCatalogEditing}
+        onCancelCatalogEdit={handleCancelCatalogEdit}
+      />
+    </div>
   );
 }

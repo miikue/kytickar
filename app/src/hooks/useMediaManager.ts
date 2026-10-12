@@ -50,10 +50,12 @@ export function useMediaManager(reload: () => Promise<void>) {
         setMediaPopis('');
       }
 
-      setMediaMessage('Medium smazano.');
+      setMediaMessage('Substrát smazán.');
       await reload();
     } catch (err) {
-      setMediaMessage(err instanceof Error ? err.message : 'Smazani media selhalo.');
+      const msg = err instanceof Error ? err.message : 'Smazání substrátu selhalo.';
+      setMediaMessage(msg);
+      window.alert('⚠️ ' + msg);
     }
   }
 

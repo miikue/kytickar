@@ -21,40 +21,59 @@ export default function UmisteniEditor({ editingId, form, setForm, umisteni, onS
   const parentOptions = umisteni.filter((item) => item.id !== editingId);
 
   return (
-    <article className="table-card">
-      <h2>{editingId ? 'Upravit umisteni' : 'Pridat umisteni'}</h2>
+    <article className="catalog-editor-card">
+      <div className="catalog-editor-header">
+        <h3 className="catalog-editor-title">
+          {editingId ? `✏️ Upravit umístění: ${form.nazev || ''}` : '✨ Nové umístění'}
+        </h3>
+        <button type="button" className="catalog-editor-close-btn" onClick={onCancel} aria-label="Zavřít">
+          ✕
+        </button>
+      </div>
+
       <form className="stack-form" onSubmit={onSubmit}>
         <label>
-          Nazev umisteni
-          <input required value={form.nazev} onChange={(event) => setForm({ ...form, nazev: event.target.value })} />
+          Název umístění
+          <input
+            required
+            placeholder="např. Obývací pokoj, Parapet na jih, Koupelna, Balkón"
+            value={form.nazev}
+            onChange={(event) => setForm({ ...form, nazev: event.target.value })}
+          />
         </label>
         <label>
-          Nadrazene umisteni
+          Nadřazená místnost / zóna (volitelné)
           <select value={form.parentId} onChange={(event) => setForm({ ...form, parentId: event.target.value })}>
-            <option value="">Bez nadrazeneho umisteni</option>
+            <option value="">-- Samostatné umístění (bez nadřazeného) --</option>
             {parentOptions.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.nazev} (ID {item.id})
+                📍 {item.nazev}
               </option>
             ))}
           </select>
         </label>
-        <div className="form-actions">
-          <button className="button primary" type="submit">
-            Ulozit
+        <div className="catalog-form-actions">
+          <button className="catalog-btn-submit" type="submit">
+            💾 {editingId ? 'Uložit změny' : 'Přidat umístění'}
+          </button>
+          <button className="catalog-btn-cancel" type="button" onClick={onCancel}>
+            Zrušit
           </button>
           {editingId && (
-            <>
-              <button className="button secondary" type="button" onClick={onCancel}>
-                Zrusit editaci
-              </button>
-              <button className="button secondary" type="button" onClick={() => onDelete(editingId)}>
-                Smazat
-              </button>
-            </>
+            <button
+              className="catalog-btn-delete"
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Opravdu chcete smazat umístění "${form.nazev}"?`)) {
+                  onDelete(editingId);
+                }
+              }}
+            >
+              🗑️ Smazat
+            </button>
           )}
         </div>
-        {message && <p>{message}</p>}
+        {message && <div className="detail-care-feedback-badge">{message}</div>}
       </form>
     </article>
   );

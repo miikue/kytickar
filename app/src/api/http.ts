@@ -7,10 +7,19 @@ export const DEFAULT_PLANT_ICON =
 
 const photoUrlCache = new Map<string, string>();
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('kytickar-db-reset', () => {
+    photoUrlCache.clear();
+  });
+}
+
 export function getFileUrl(fileName: string | null | undefined): string {
   if (!fileName) return '';
-  if (fileName.startsWith('data:') || fileName.startsWith('blob:') || fileName.startsWith('http')) {
+  if (fileName.startsWith('data:') || fileName.startsWith('blob:') || fileName.startsWith('http') || fileName.startsWith('/')) {
     return fileName;
+  }
+  if (fileName === 'image.png') {
+    return '/image.png';
   }
   const cached = photoUrlCache.get(fileName);
   if (cached) return cached;

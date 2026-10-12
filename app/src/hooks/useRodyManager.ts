@@ -50,10 +50,12 @@ export function useRodyManager(reload: () => Promise<void>) {
         setRodPopis('');
       }
 
-      setRodMessage('Rod smazan.');
+      setRodMessage('Rod smazán.');
       await reload();
     } catch (err) {
-      setRodMessage(err instanceof Error ? err.message : 'Smazani rodu selhalo.');
+      const msg = err instanceof Error ? err.message : 'Smazání rodu selhalo.';
+      setRodMessage(msg);
+      window.alert('⚠️ ' + msg);
     }
   }
 

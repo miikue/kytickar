@@ -52,3 +52,22 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+tasks.register('cleanICloudDuplicates') {
+    doFirst {
+        fileTree(dir: "${rootDir}/..").matching {
+            include '**/* [0-9]*'
+            include '**/* [0-9]*.*'
+        }.each { file ->
+            if (file.exists()) {
+                if (file.isDirectory()) {
+                    file.deleteDir()
+                } else {
+                    file.delete()
+                }
+            }
+        }
+    }
+}
+
+preBuild.dependsOn 'cleanICloudDuplicates'

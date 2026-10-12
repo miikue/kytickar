@@ -57,10 +57,12 @@ export function useUmisteniManager(reload: () => Promise<void>) {
         setUmisteniForm({ nazev: '', parentId: '' });
       }
 
-      setUmisteniMessage('Umisteni smazano.');
+      setUmisteniMessage('Umístění smazáno.');
       await reload();
     } catch (err) {
-      setUmisteniMessage(err instanceof Error ? err.message : 'Smazani umisteni selhalo.');
+      const msg = err instanceof Error ? err.message : 'Smazání umístění selhalo.';
+      setUmisteniMessage(msg);
+      window.alert('⚠️ ' + msg);
     }
   }
 

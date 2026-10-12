@@ -35,33 +35,34 @@ export default function DruhuEditor({
   message,
 }: Props) {
   return (
-    <article className="table-card">
-      <h2>{editingId ? 'Upravit druh' : 'Pridat druh'}</h2>
+    <article className="catalog-editor-card">
+      <div className="catalog-editor-header">
+        <h3 className="catalog-editor-title">
+          {editingId ? `✏️ Upravit druh: ${form.nazev || ''}` : '✨ Nový botanický druh'}
+        </h3>
+        <button type="button" className="catalog-editor-close-btn" onClick={onCancel} aria-label="Zavřít">
+          ✕
+        </button>
+      </div>
+
       <form className="stack-form" onSubmit={onSubmit}>
         <label>
-          Nazev
+          Název druhu
           <input
             required
+            placeholder="např. Monstera Deliciosa, Ficus Elastica"
             value={form.nazev}
             onChange={(event) => setForm({ ...form, nazev: event.target.value })}
           />
         </label>
         <label>
-          Popis
-          <textarea
-            rows={3}
-            value={form.popis}
-            onChange={(event) => setForm({ ...form, popis: event.target.value })}
-          />
-        </label>
-        <label>
-          Rod
+          Botanický rod
           <select
             value={form.rodId}
             onChange={(event) => setForm({ ...form, rodId: event.target.value })}
             className="rod-picker-select"
           >
-            <option value="">-- bez rodu --</option>
+            <option value="">-- Bez rodu (vyberte rod) --</option>
             {rody.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.nazev}
@@ -70,7 +71,16 @@ export default function DruhuEditor({
           </select>
         </label>
         <label>
-          Fotka - mala
+          Popis a nároky druhu
+          <textarea
+            rows={3}
+            placeholder="Nároky na světlo, zálivku, původ..."
+            value={form.popis}
+            onChange={(event) => setForm({ ...form, popis: event.target.value })}
+          />
+        </label>
+        <label>
+          Fotografie druhu (náhled)
           <input
             type="file"
             accept="image/*"
@@ -79,54 +89,37 @@ export default function DruhuEditor({
             }}
           />
           {uploadedPhotoNames.fotka1 && !uploadingPhotos.fotka1 && (
-            <p className="info-text">Aktualne ulozena: {uploadedPhotoNames.fotka1}</p>
+            <p className="info-text">Aktuálně uloženo: {uploadedPhotoNames.fotka1}</p>
           )}
           {uploadingPhotos.fotka1 && (
             <p className="info-text">
-              Novy soubor: {uploadingPhotos.fotka1.name} ({(uploadingPhotos.fotka1.size / 1024 / 1024).toFixed(2)} MB)
+              Nový soubor: {uploadingPhotos.fotka1.name} ({(uploadingPhotos.fotka1.size / 1024 / 1024).toFixed(2)} MB)
             </p>
           )}
         </label>
 
-        <label>
-          Fotka - velka
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => {
-              setUploadingPhotos({ ...uploadingPhotos, fotka2: event.target.files?.[0] || null });
-            }}
-          />
-          {uploadedPhotoNames.fotka2 && !uploadingPhotos.fotka2 && (
-            <p className="info-text">Aktualne ulozena: {uploadedPhotoNames.fotka2}</p>
-          )}
-          {uploadingPhotos.fotka2 && (
-            <p className="info-text">
-              Novy soubor: {uploadingPhotos.fotka2.name} ({(uploadingPhotos.fotka2.size / 1024 / 1024).toFixed(2)} MB)
-            </p>
-          )}
-        </label>
-
-        <div className="form-actions">
-          <button className="button primary" type="submit">
-            Ulozit
+        <div className="catalog-form-actions">
+          <button className="catalog-btn-submit" type="submit">
+            💾 {editingId ? 'Uložit změny' : 'Přidat druh'}
+          </button>
+          <button className="catalog-btn-cancel" type="button" onClick={onCancel}>
+            Zrušit
           </button>
           {editingId && (
-            <>
-              <button className="button secondary" type="button" onClick={onCancel}>
-                Zrusit editaci
-              </button>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => onDelete(editingId)}
-              >
-                Smazat druh
-              </button>
-            </>
+            <button
+              className="catalog-btn-delete"
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Opravdu chcete smazat druh "${form.nazev}"?`)) {
+                  onDelete(editingId);
+                }
+              }}
+            >
+              🗑️ Smazat
+            </button>
           )}
         </div>
-        {message && <p>{message}</p>}
+        {message && <div className="detail-care-feedback-badge">{message}</div>}
       </form>
     </article>
   );
