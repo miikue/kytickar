@@ -139,6 +139,12 @@ function deleteFromStore(db: IDBDatabase, storeName: string, key: IDBValidKey): 
   });
 }
 
+function notifyCareUpdated(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('kytickar-care-updated'));
+  }
+}
+
 // -------------------------------------------------------------
 // SEED & DATA IMPORT HELPER (ČISTÝ ŠTÍT)
 // -------------------------------------------------------------
@@ -204,7 +210,6 @@ async function seedDbIfNeeded(db: IDBDatabase): Promise<void> {
 
   await applyDataToStores(db, (defaultData as any).data);
   await ensureDemoPhotoFile(db);
-  await attachDemoPhotoToSeed(db);
 }
 
 export async function ensureDemoPhotoFile(db: IDBDatabase): Promise<void> {
@@ -231,31 +236,6 @@ export async function ensureDemoPhotoFile(db: IDBDatabase): Promise<void> {
     }
   } catch (err) {
     console.warn('ensureDemoPhotoFile warning:', err);
-  }
-}
-
-async function attachDemoPhotoToSeed(db: IDBDatabase): Promise<void> {
-  try {
-    const allFotky = await getAllFromStore<GalerieFotka>(db, 'galerieFotky');
-    if (!allFotky.some(f => f.fotkaName === 'image.png')) {
-      const plants = await getAllFromStore<any>(db, 'rostliny');
-      if (plants.length > 0) {
-        await addToStore(db, 'galerieFotky', {
-          rostlinaId: plants[0].id,
-          fotkaName: 'image.png',
-          poznamka: 'Ukázková kytice',
-          datumPorizeni: new Date().toISOString(),
-        });
-      }
-    }
-
-    const druhy = await getAllFromStore<any>(db, 'druhy');
-    if (druhy.length > 0 && !druhy[0].fotka1Name) {
-      druhy[0].fotka1Name = 'image.png';
-      await putToStore(db, 'druhy', druhy[0]);
-    }
-  } catch (err) {
-    console.warn('attachDemoPhotoToSeed warning:', err);
   }
 }
 
@@ -375,6 +355,7 @@ export const localDb = {
     });
 
     const list = await this.getRostliny();
+    notifyCareUpdated();
     return list.find(r => r.id === newId)!;
   },
 
@@ -394,6 +375,7 @@ export const localDb = {
 
     await putToStore(db, 'rostliny', updated);
     const list = await this.getRostliny();
+    notifyCareUpdated();
     return list.find(r => r.id === id)!;
   },
 
@@ -409,6 +391,7 @@ export const localDb = {
     for (const h of historie.filter(h => h.rostlinaId === id)) {
       await deleteFromStore(db, 'historiePece', h.id);
     }
+    notifyCareUpdated();
     return null;
   },
 
@@ -690,6 +673,7 @@ export const localDb = {
     });
     const typyAkci = await getAllFromStore<TypAkce>(db, 'typyAkci');
     const created = await getFromStore<HistoriePece>(db, 'historiePece', id);
+    notifyCareUpdated();
     return {
       ...created!,
       typAkce: typyAkci.find(t => t.id === created!.typAkceId) || { id: created!.typAkceId, typAkce: 'Akce' },
@@ -699,6 +683,7 @@ export const localDb = {
   async deleteHistoriePece(id: number): Promise<null> {
     const db = await openDb();
     await deleteFromStore(db, 'historiePece', id);
+    notifyCareUpdated();
     return null;
   },
 
@@ -790,7 +775,24 @@ export const localDb = {
       datumPripomenuti,
     });
 
+    notifyCareUpdated();
     return { id, rostlinaId, typAkceId: wateringTyp.id, datumPripomenuti, dny: snoozeDays };
+  },
+
+  async getAllCareRemindersData(): Promise<{
+    rostliny: Rostlina[];
+    typyAkci: TypAkce[];
+    historie: HistoriePece[];
+    odlozene: Array<{ id: number; rostlinaId: number; typAkceId: number; datum: string; datumPripomenuti: string }>;
+  }> {
+    const db = await openDb();
+    const [rostliny, typyAkci, historie, odlozene] = await Promise.all([
+      this.getRostliny(),
+      getAllFromStore<TypAkce>(db, 'typyAkci'),
+      getAllFromStore<HistoriePece>(db, 'historiePece'),
+      getAllFromStore<any>(db, 'odlozeneAkce'),
+    ]);
+    return { rostliny, typyAkci, historie, odlozene };
   },
 
   async logActivity(payload: any): Promise<ActivityLog> {
@@ -944,6 +946,7 @@ export const localDb = {
       label: 'Obnova ze zálohy',
       details: `Naimportována data (${rostlinyCount} rostlin, ${druhyCount} druhů)`,
     });
+    notifyCareUpdated();
   },
 
   async resetToDefaultData(): Promise<void> {
@@ -951,7 +954,6 @@ export const localDb = {
     await clearAllStores(db, true);
     await applyDataToStores(db, (defaultData as any).data);
     await ensureDemoPhotoFile(db);
-    await attachDemoPhotoToSeed(db);
     await ensureTypyAkciDefaults(db);
 
     if (typeof window !== 'undefined') {
@@ -964,6 +966,7 @@ export const localDb = {
       label: 'Reset na výchozí data',
       details: 'Obnoven výchozí dataset Kytičkáře.',
     });
+    notifyCareUpdated();
   },
 
   async clearAllData(clearPhotos = true): Promise<void> {

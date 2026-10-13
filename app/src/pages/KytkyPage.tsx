@@ -545,64 +545,66 @@ export default function KytkyPage({
     <section className={`plants-layout ${selectedRostlina ? 'detail-open' : 'list-open'}`}>
       <article className="plants-list-container">
         {/* STORIES / REELS: Kytky co potřebují pozornost */}
-        {nejdelsiOdZaliti.length > 0 ? (
-          <section className="plant-stories-section">
-            <div className="section-title-row">
-              <span className="section-title-label">⚡ Potřebují péči</span>
-              <span className="section-title-count">{nejdelsiOdZaliti.length}</span>
-            </div>
+        {rostliny.length > 0 && (
+          nejdelsiOdZaliti.length > 0 ? (
+            <section className="plant-stories-section">
+              <div className="section-title-row">
+                <span className="section-title-label">⚡ Potřebují péči</span>
+                <span className="section-title-count">{nejdelsiOdZaliti.length}</span>
+              </div>
 
-            <div className="plant-stories-scroll">
-              {nejdelsiOdZaliti.map((item) => {
-                const overviewPlant = rostliny.find((rostlina) => rostlina.id === item.id) || null;
-                const thumb = overviewPlant?.galerieFotky?.[0] || null;
-                const waterType = typyAkci.find((t) => isWateringActionName(t.typAkce));
-                const urgentThreshold = waterType?.intervalDny || 4;
-                const isUrgent = item.dnyOdPoslednihoZaliti === null || item.dnyOdPoslednihoZaliti >= urgentThreshold;
+              <div className="plant-stories-scroll">
+                {nejdelsiOdZaliti.map((item) => {
+                  const overviewPlant = rostliny.find((rostlina) => rostlina.id === item.id) || null;
+                  const thumb = overviewPlant?.galerieFotky?.[0] || null;
+                  const waterType = typyAkci.find((t) => isWateringActionName(t.typAkce));
+                  const urgentThreshold = waterType?.intervalDny || 4;
+                  const isUrgent = item.dnyOdPoslednihoZaliti === null || item.dnyOdPoslednihoZaliti >= urgentThreshold;
 
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`story-circle-item ${isUrgent ? 'story-urgent' : ''}`}
-                    onClick={() => {
-                      setStoryActionFeedback(null);
-                      setActiveStoryPlant(item);
-                    }}
-                    title={`${item.vlastniJmeno} - klikněte pro rychlé akce`}
-                  >
-                    <div className="story-ring">
-                      <div className="story-avatar-wrap">
-                        {thumb ? (
-                          <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="story-avatar-img" />
-                        ) : (
-                          <span className="story-avatar-emoji">🌱</span>
-                        )}
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`story-circle-item ${isUrgent ? 'story-urgent' : ''}`}
+                      onClick={() => {
+                        setStoryActionFeedback(null);
+                        setActiveStoryPlant(item);
+                      }}
+                      title={`${item.vlastniJmeno} - klikněte pro rychlé akce`}
+                    >
+                      <div className="story-ring">
+                        <div className="story-avatar-wrap">
+                          {thumb ? (
+                            <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="story-avatar-img" />
+                          ) : (
+                            <span className="story-avatar-emoji">🌱</span>
+                          )}
+                        </div>
+                        <span className="story-badge">💧</span>
                       </div>
-                      <span className="story-badge">💧</span>
-                    </div>
-                    <span className="story-name">{item.vlastniJmeno}</span>
-                    <span className="story-days">
-                      {item.dnyOdPoslednihoZaliti === null ? 'Nezalito' : `${item.dnyOdPoslednihoZaliti} d`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : (
-          <section className="plant-stories-section">
-            <div className="all-watered-banner">
-              <div className="all-watered-icon-wrap">
-                <span className="all-watered-icon">🌿</span>
+                      <span className="story-name">{item.vlastniJmeno}</span>
+                      <span className="story-days">
+                        {item.dnyOdPoslednihoZaliti === null ? 'Nezalito' : `${item.dnyOdPoslednihoZaliti} d`}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="all-watered-content">
-                <strong>Všechny kytičky mají péči!</strong>
-                <span>Žádná rostlina momentálně nepotřebuje zálivku.</span>
+            </section>
+          ) : (
+            <section className="plant-stories-section">
+              <div className="all-watered-banner">
+                <div className="all-watered-icon-wrap">
+                  <span className="all-watered-icon">🌿</span>
+                </div>
+                <div className="all-watered-content">
+                  <strong>Všechny kytičky mají péči!</strong>
+                  <span>Žádná rostlina momentálně nepotřebuje zálivku.</span>
+                </div>
+                <span className="all-watered-check">✅</span>
               </div>
-              <span className="all-watered-check">✅</span>
-            </div>
-          </section>
+            </section>
+          )
         )}
 
         {/* HLAVNÍ SEZNAM ROSTLIN */}

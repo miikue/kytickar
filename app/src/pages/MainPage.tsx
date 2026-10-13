@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import BottomNavBar, { type NavTab } from '../components/BottomNavBar';
 import KytkyPage from './KytkyPage';
 import KatalogPage from './KatalogPage';
@@ -12,6 +14,7 @@ import { useRostlinyManager } from '../hooks/useRostlinyManager';
 import { useUmisteniManager } from '../hooks/useUmisteniManager';
 import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
 import { logActivity } from '../api/activityApi';
+import { notificationService } from '../services/notificationService';
 
 export default function MainPage() {
   const [activeTab, setActiveTab] = useState<NavTab>('kytky');
@@ -20,6 +23,23 @@ export default function MainPage() {
   const [kytkyResetCounter, setKytkyResetCounter] = useState(0);
   const [catalogResetCounter, setCatalogResetCounter] = useState(0);
   const { rostliny, druhy, rody, media, umisteni, typyAkci, loading, error, reload } = useDashboardData();
+
+  useEffect(() => {
+    // 1. Přepočet a aktualizace systémových připomínek při spuštění aplikace
+    notificationService.rescheduleAllReminders().catch(() => {});
+
+    // 2. Reakce na klepnutí na notifikaci v liště telefonu (přepne do Moje kytky)
+    if (Capacitor.isNativePlatform()) {
+      const listenerPromise = LocalNotifications.addListener('localNotificationActionPerformed', () => {
+        setActiveTab('kytky');
+        setIsDetailOpen(false);
+      });
+
+      return () => {
+        listenerPromise.then((handle) => handle.remove()).catch(() => {});
+      };
+    }
+  }, []);
 
   const handleCancelDetail = () => {
     setKytkyResetCounter((c) => c + 1);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { backupService, type StorageStats } from '../services/backupService';
+import { notificationService, type NotificationSettings } from '../services/notificationService';
 
 type Props = {
   onDataReload: () => Promise<void>;
@@ -12,6 +13,12 @@ export default function SettingsPage({ onDataReload }: Props) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Notification state
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(notificationService.getSettings());
+  const [notifPermission, setNotifPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [nextScheduleInfo, setNextScheduleInfo] = useState<string | null>(null);
+
   const loadStats = async () => {
     try {
       const s = await backupService.getStorageStats();
@@ -21,9 +28,116 @@ export default function SettingsPage({ onDataReload }: Props) {
     }
   };
 
+  const loadNotificationStatus = async () => {
+    const s = notificationService.getSettings();
+    setNotifSettings(s);
+    const perm = await notificationService.checkPermission();
+    setNotifPermission(perm);
+    if (s.enabled && perm === 'granted') {
+      const res = await notificationService.rescheduleAllReminders();
+      if (res.nextReminderDate) {
+        setNextScheduleInfo(`Příští připomenutí: ${res.nextReminderDate}`);
+      } else {
+        setNextScheduleInfo('Všechny kytičky jsou zalité a mají péči');
+      }
+    }
+  };
+
   useEffect(() => {
     loadStats();
+    loadNotificationStatus();
   }, []);
+
+  const handleToggleNotifications = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const targetEnabled = e.target.checked;
+    setNotifLoading(true);
+    setMessage(null);
+    try {
+      if (targetEnabled) {
+        const perm = await notificationService.checkPermission();
+        let granted = perm === 'granted';
+        if (!granted) {
+          granted = await notificationService.requestPermission();
+        }
+        setNotifPermission(granted ? 'granted' : 'denied');
+        if (!granted) {
+          setMessage({
+            type: 'error',
+            text: 'Oprávnění k odesílání notifikací nebylo uděleno v systému Android.',
+          });
+          const newSettings = { ...notifSettings, enabled: false };
+          setNotifSettings(newSettings);
+          await notificationService.saveSettings(newSettings);
+          return;
+        }
+
+        const newSettings = { ...notifSettings, enabled: true };
+        setNotifSettings(newSettings);
+        await notificationService.saveSettings(newSettings);
+        const res = await notificationService.rescheduleAllReminders();
+        setMessage({
+          type: 'success',
+          text: `Připomínky aktivovány v ${newSettings.time}. Naplánováno ${res.scheduledCount} oznámení.`,
+        });
+        if (res.nextReminderDate) {
+          setNextScheduleInfo(`Příští připomenutí: ${res.nextReminderDate}`);
+        } else {
+          setNextScheduleInfo('Všechny kytičky mají péči');
+        }
+      } else {
+        const newSettings = { ...notifSettings, enabled: false };
+        setNotifSettings(newSettings);
+        await notificationService.saveSettings(newSettings);
+        setNextScheduleInfo(null);
+        setMessage({
+          type: 'success',
+          text: 'Automatické připomínky péče byly vypnuty.',
+        });
+      }
+    } catch (err: any) {
+      console.error('Chyba při změně notifikací:', err);
+      setMessage({
+        type: 'error',
+        text: err?.message || 'Chyba při nastavení notifikací.',
+      });
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleTimeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    const newSettings = { ...notifSettings, time: newTime };
+    setNotifSettings(newSettings);
+    await notificationService.saveSettings(newSettings);
+    if (newSettings.enabled && notifPermission === 'granted') {
+      const res = await notificationService.rescheduleAllReminders();
+      if (res.nextReminderDate) {
+        setNextScheduleInfo(`Příští připomenutí: ${res.nextReminderDate}`);
+      }
+    }
+  };
+
+  const handleTestNotification = async () => {
+    setNotifLoading(true);
+    setMessage(null);
+    try {
+      await notificationService.sendTestNotification();
+      setNotifPermission('granted');
+      setMessage({
+        type: 'success',
+        text: 'Zkušební notifikace byla odeslána! Zkontrolujte horní lištu telefonu.',
+      });
+    } catch (err: any) {
+      console.error('Chyba testovací notifikace:', err);
+      setMessage({
+        type: 'error',
+        text: err?.message || 'Nepodařilo se odeslat testovací notifikaci. Zkontrolujte oprávnění v systému Android.',
+      });
+    } finally {
+      setNotifLoading(false);
+    }
+  };
 
   const handleExportZip = async () => {
     setLoading(true);
@@ -198,6 +312,77 @@ export default function SettingsPage({ onDataReload }: Props) {
         ) : (
           <div className="settings-loading-stats">Načítání údajů o úložišti...</div>
         )}
+      </div>
+
+      {/* Notifications card */}
+      <div className="settings-card">
+        <div className="settings-card-header">
+          <div className="settings-card-title-group">
+            <span className="settings-icon">🔔</span>
+            <div>
+              <h3 className="settings-card-title">Připomínky a Notifikace</h3>
+              <p className="settings-card-desc">Upozornění na zálivku, hnojení a další péči</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-actions-list">
+          {/* Toggle row */}
+          <div className="settings-action-row">
+            <div className="action-info">
+              <strong>Povolit připomínky péče</strong>
+              <span>
+                {notifSettings.enabled
+                  ? (notifPermission === 'granted'
+                      ? (nextScheduleInfo || 'Notifikace jsou aktivní a naplánované')
+                      : 'Čeká se na systémové povolení oznámení v Androidu')
+                  : 'Automatická upozornění jsou vypnuta'}
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={notifSettings.enabled && notifPermission === 'granted'}
+                onChange={handleToggleNotifications}
+                disabled={notifLoading}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+
+          {/* Time picker row (if enabled) */}
+          {notifSettings.enabled && (
+            <div className="settings-action-row">
+              <div className="action-info">
+                <strong>Čas ranního upozornění</strong>
+                <span>V kolik hodin vás má telefon upozornit</span>
+              </div>
+              <input
+                type="time"
+                className="time-picker-input"
+                value={notifSettings.time}
+                onChange={handleTimeChange}
+                disabled={notifLoading}
+              />
+            </div>
+          )}
+
+          {/* Test button & status row */}
+          <div className="settings-action-row">
+            <div className="action-info">
+              <strong>Zkušební notifikace</strong>
+              <span>Ověří zobrazení oznámení na liště telefonu</span>
+            </div>
+            <button
+              type="button"
+              className="action-button secondary"
+              disabled={notifLoading}
+              onClick={handleTestNotification}
+            >
+              🔔 Otestovat
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Backup and export section */}
