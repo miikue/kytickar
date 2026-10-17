@@ -34,10 +34,6 @@ export function getFileUrl(fileName: string | null | undefined): string {
   }
   const cleanName = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
 
-  if (cleanName === 'image.png') {
-    return '/image.png';
-  }
-
   const cached = photoUrlCache.get(cleanName);
   if (cached) return cached;
 
