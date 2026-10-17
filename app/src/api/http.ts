@@ -7,34 +7,54 @@ export const DEFAULT_PLANT_ICON =
 
 const photoUrlCache = new Map<string, string>();
 
+export function setPhotoUrlCache(fileName: string, dataUrl: string): void {
+  const clean = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+  photoUrlCache.set(clean, dataUrl);
+}
+
+export function clearPhotoUrlCache(): void {
+  photoUrlCache.clear();
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('kytickar-db-reset', () => {
     photoUrlCache.clear();
   });
+  window.addEventListener('kytickar-photo-saved', ((e: CustomEvent<{ fileName: string; dataUrl: string }>) => {
+    if (e.detail?.fileName && e.detail?.dataUrl) {
+      setPhotoUrlCache(e.detail.fileName, e.detail.dataUrl);
+    }
+  }) as EventListener);
 }
 
 export function getFileUrl(fileName: string | null | undefined): string {
   if (!fileName) return '';
-  if (fileName.startsWith('data:') || fileName.startsWith('blob:') || fileName.startsWith('http') || fileName.startsWith('/')) {
+  if (fileName.startsWith('data:') || fileName.startsWith('blob:') || fileName.startsWith('http')) {
     return fileName;
   }
-  if (fileName === 'image.png') {
+  const cleanName = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+
+  if (cleanName === 'image.png') {
     return '/image.png';
   }
-  const cached = photoUrlCache.get(fileName);
+
+  const cached = photoUrlCache.get(cleanName);
   if (cached) return cached;
 
-  localDb.getPhoto(fileName).then((dataUrl) => {
+  localDb.getPhoto(cleanName).then((dataUrl) => {
     if (dataUrl) {
-      photoUrlCache.set(fileName, dataUrl);
-      window.dispatchEvent(new CustomEvent('kytickar-photo-loaded', { detail: fileName }));
+      photoUrlCache.set(cleanName, dataUrl);
+      window.dispatchEvent(new CustomEvent('kytickar-photo-loaded', { detail: cleanName }));
     }
   });
 
-  if (API_BASE_URL) {
-    return `${API_BASE_URL}/api/files/${fileName}`;
+  if (fileName.startsWith('/')) {
+    return fileName;
   }
-  return DEFAULT_PLANT_ICON;
+  if (API_BASE_URL) {
+    return `${API_BASE_URL}/api/files/${cleanName}`;
+  }
+  return `/species/${cleanName}`;
 }
 
 const isStandaloneMode = Capacitor.isNativePlatform() || !API_BASE_URL;

@@ -813,6 +813,9 @@ export const localDb = {
   async savePhoto(fileName: string, dataUrl: string): Promise<string> {
     const db = await openDb();
     await putToStore(db, 'photos', { fileName, dataUrl });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-photo-saved', { detail: { fileName, dataUrl } }));
+    }
     return fileName;
   },
 

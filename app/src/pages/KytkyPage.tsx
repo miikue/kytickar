@@ -14,6 +14,7 @@ import {
 import { logActivity } from '../api/activityApi';
 import { deleteRostlina, updateRostlina } from '../api/rostlinyApi';
 import type { Druh, GalerieFotka, HistoriePece, Medium, Rostlina, RostlinaOdZaliti, TypAkce, Umisteni } from '../types/app';
+import PhotoSourceModal from '../components/PhotoSourceModal';
 
 type Props = {
   rostliny: Rostlina[];
@@ -70,6 +71,10 @@ export default function KytkyPage({
   const [storyActionFeedback, setStoryActionFeedback] = useState<string | null>(null);
   const [storyActionLoading, setStoryActionLoading] = useState(false);
   const [showAddPhotoForm, setShowAddPhotoForm] = useState(false);
+  const [isDetailPhotoModalOpen, setIsDetailPhotoModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUmisteniFilterId, setSelectedUmisteniFilterId] = useState<string>('all');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [shouldScrollToDetail, setShouldScrollToDetail] = useState(false);
   const detailCardRef = useRef<HTMLElement | null>(null);
 
@@ -77,6 +82,51 @@ export default function KytkyPage({
     () => rostliny.find((item) => item.id === selectedId) || null,
     [rostliny, selectedId],
   );
+
+  const filteredRostliny = useMemo(() => {
+    let result = rostliny;
+
+    if (selectedUmisteniFilterId !== 'all') {
+      const umisteniIdNum = Number(selectedUmisteniFilterId);
+      result = result.filter((r) => r.umisteni?.id === umisteniIdNum);
+    }
+
+    const query = searchQuery.trim();
+    if (query) {
+      const queryNorm = query
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+      result = result.filter((r) => {
+        const jmenoNorm = (r.vlastniJmeno || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+        const druhNorm = (r.druh?.nazev || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+        const rodNorm = (r.druh?.rod?.nazev || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+        const umisteniNorm = (r.umisteni?.nazev || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+
+        return (
+          jmenoNorm.includes(queryNorm) ||
+          druhNorm.includes(queryNorm) ||
+          rodNorm.includes(queryNorm) ||
+          umisteniNorm.includes(queryNorm)
+        );
+      });
+    }
+
+    return result;
+  }, [rostliny, searchQuery, selectedUmisteniFilterId]);
 
   useEffect(() => {
     onDetailOpenChange?.(Boolean(selectedRostlina || activeStoryPlant));
@@ -88,6 +138,10 @@ export default function KytkyPage({
       setIsEditing(false);
       setActiveStoryPlant(null);
       setExpandedPhoto(null);
+      setSearchQuery('');
+      setSelectedUmisteniFilterId('all');
+      setIsSearchExpanded(false);
+      setIsDetailPhotoModalOpen(false);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [resetTrigger]);
@@ -562,13 +616,20 @@ export default function KytkyPage({
                   const isUrgent = item.dnyOdPoslednihoZaliti === null || item.dnyOdPoslednihoZaliti >= urgentThreshold;
 
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       className={`story-circle-item ${isUrgent ? 'story-urgent' : ''}`}
                       onClick={() => {
                         setStoryActionFeedback(null);
                         setActiveStoryPlant(item);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setStoryActionFeedback(null);
+                          setActiveStoryPlant(item);
+                        }
                       }}
                       title={`${item.vlastniJmeno} - klikněte pro rychlé akce`}
                     >
@@ -586,7 +647,7 @@ export default function KytkyPage({
                       <span className="story-days">
                         {item.dnyOdPoslednihoZaliti === null ? 'Nezalito' : `${item.dnyOdPoslednihoZaliti} d`}
                       </span>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -607,29 +668,124 @@ export default function KytkyPage({
           )
         )}
 
-        {/* HLAVNÍ SEZNAM ROSTLIN */}
+        {/* HLAVNÍ SEZNAM ROSTLIN S NENÁPADNÝM VYHLEDÁVÁNÍM */}
         <div className="plants-section-header">
-          <h2 className="plants-section-title">Moje kytičky</h2>
-          <span className="plants-count-pill">{rostliny.length}</span>
+          <div className="plants-section-title-wrap">
+            <h2 className="plants-section-title">Moje kytičky</h2>
+            <span className="plants-count-pill">
+              {filteredRostliny.length === rostliny.length
+                ? rostliny.length
+                : `${filteredRostliny.length} / ${rostliny.length}`}
+            </span>
+          </div>
+
+          <div className="plants-section-actions">
+            <button
+              type="button"
+              className={`plants-search-toggle-btn ${isSearchExpanded || searchQuery || selectedUmisteniFilterId !== 'all' ? 'active' : ''}`}
+              onClick={() => setIsSearchExpanded((prev) => !prev)}
+              title={isSearchExpanded ? 'Zavřít hledání' : 'Hledat a filtrovat kytičky'}
+              aria-label="Hledat a filtrovat"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* NENÁPADNÝ ROZBALOVACÍ VYHLEDÁVACÍ A FILTROVACÍ PANEL */}
+        {(isSearchExpanded || searchQuery || selectedUmisteniFilterId !== 'all') && (
+          <div className="plants-subtle-search-bar">
+            <div className="plants-subtle-search-input-wrap">
+              <span className="plants-subtle-search-icon">🔍</span>
+              <input
+                type="search"
+                className="plants-subtle-search-input"
+                placeholder="Hledat podle jména, druhu či umístění..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus={isSearchExpanded && !searchQuery}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="plants-subtle-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Smazat hledaný text"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {umisteni && umisteni.length > 0 && (
+              <div className="plants-filter-chips-row">
+                <button
+                  type="button"
+                  className={`filter-chip ${selectedUmisteniFilterId === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedUmisteniFilterId('all')}
+                >
+                  Vše ({rostliny.length})
+                </button>
+                {umisteni.map((u) => {
+                  const count = rostliny.filter((r) => r.umisteni?.id === u.id).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      className={`filter-chip ${selectedUmisteniFilterId === String(u.id) ? 'active' : ''}`}
+                      onClick={() => setSelectedUmisteniFilterId(selectedUmisteniFilterId === String(u.id) ? 'all' : String(u.id))}
+                    >
+                      📍 {u.nazev} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {rostliny.length === 0 ? (
           <div className="plants-empty-state">
             <span className="empty-icon">🪴</span>
             <p>Zatím tu nemáte žádné kytičky.</p>
           </div>
+        ) : filteredRostliny.length === 0 ? (
+          <div className="plants-empty-state">
+            <span className="empty-icon">🔍</span>
+            <p>Žádná kytička neodpovídá zadanému hledání.</p>
+            <button
+              type="button"
+              className="plants-empty-reset-btn"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedUmisteniFilterId('all');
+              }}
+            >
+              Zrušit filtry
+            </button>
+          </div>
         ) : (
           <div className="mobile-plants-grid">
-            {rostliny.map((item) => {
+            {filteredRostliny.map((item) => {
               const thumb = item.galerieFotky?.[0];
               const isSelected = item.id === selectedId;
 
               return (
-                <button
+                <div
                   key={item.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={`mobile-plant-card ${isSelected ? 'active' : ''}`}
                   onClick={() => openPlantDetail(item.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      openPlantDetail(item.id);
+                    }
+                  }}
                 >
                   <div className="mobile-plant-card-media">
                     {thumb ? (
@@ -646,7 +802,7 @@ export default function KytkyPage({
                       <span className="mobile-plant-card-location">📍 {item.umisteni.nazev}</span>
                     )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -870,27 +1026,93 @@ export default function KytkyPage({
                     <button
                       type="button"
                       className="detail-add-photo-toggle"
-                      onClick={() => setShowAddPhotoForm(!showAddPhotoForm)}
+                      onClick={() => {
+                        if (showAddPhotoForm && !newPhoto) {
+                          setShowAddPhotoForm(false);
+                        } else if (showAddPhotoForm && newPhoto) {
+                          setShowAddPhotoForm(false);
+                          setNewPhoto(null);
+                        } else {
+                          setShowAddPhotoForm(true);
+                          setIsDetailPhotoModalOpen(true);
+                        }
+                      }}
                     >
-                      {showAddPhotoForm ? 'Zavřít' : '+ Přidat'}
+                      {showAddPhotoForm ? 'Zavřít' : '+ Přidat fotku'}
                     </button>
                   </div>
 
                   {showAddPhotoForm && (
-                    <form className="detail-photo-upload-box" onSubmit={submitNovaFotka}>
-                      <input type="file" accept="image/*" onChange={(event) => setNewPhoto(event.target.files?.[0] || null)} />
-                      <input
-                        type="text"
-                        value={newPhotoPoznamka}
-                        onChange={(event) => setNewPhotoPoznamka(event.target.value)}
-                        placeholder="Poznámka k fotce (volitelné)"
-                      />
-                      <button className="action-button primary" type="submit" disabled={!newPhoto}>
-                        Nahrát fotografii
-                      </button>
-                      {photoMessage && <p className="detail-feedback-msg">{photoMessage}</p>}
-                    </form>
+                    <div className="detail-photo-upload-box">
+                      {newPhoto ? (
+                        <div className="detail-photo-chosen-preview">
+                          <img
+                            src={URL.createObjectURL(newPhoto)}
+                            alt="Nová fotka"
+                            className="detail-photo-thumb-img"
+                          />
+                          <div className="detail-photo-chosen-info">
+                            <span className="chosen-name">{newPhoto.name}</span>
+                            <span className="chosen-size">{Math.round(newPhoto.size / 1024)} KB</span>
+                            <div className="chosen-actions">
+                              <button
+                                type="button"
+                                className="photo-action-btn secondary small"
+                                onClick={() => setIsDetailPhotoModalOpen(true)}
+                              >
+                                🔄 Změnit fotku
+                              </button>
+                              <button
+                                type="button"
+                                className="photo-action-btn danger small"
+                                onClick={() => setNewPhoto(null)}
+                              >
+                                ✕ Zrušit
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="detail-photo-pick-trigger-btn"
+                          onClick={() => setIsDetailPhotoModalOpen(true)}
+                        >
+                          <span className="pick-trigger-icon">📷</span>
+                          <div className="pick-trigger-text">
+                            <strong>Vyfotit nebo vybrat fotografii</strong>
+                            <span>Klepnutím otevřete volbu fotoaparát / galerie</span>
+                          </div>
+                        </button>
+                      )}
+
+                      <form className="detail-photo-form-controls" onSubmit={submitNovaFotka}>
+                        <input
+                          type="text"
+                          className="detail-photo-input-note"
+                          value={newPhotoPoznamka}
+                          onChange={(event) => setNewPhotoPoznamka(event.target.value)}
+                          placeholder="Poznámka k fotce (např. nový výhonek, po zálivce...)"
+                        />
+                        <div className="detail-photo-actions-row">
+                          <button className="action-button primary" type="submit" disabled={!newPhoto}>
+                            Uložit do fotogalerie
+                          </button>
+                        </div>
+                        {photoMessage && <p className="detail-feedback-msg">{photoMessage}</p>}
+                      </form>
+                    </div>
                   )}
+
+                  <PhotoSourceModal
+                    isOpen={isDetailPhotoModalOpen}
+                    onClose={() => setIsDetailPhotoModalOpen(false)}
+                    onPhotoSelected={(file) => {
+                      setNewPhoto(file);
+                      setShowAddPhotoForm(true);
+                      setPhotoMessage(null);
+                    }}
+                  />
 
                   {galerie.length > 0 ? (
                     <div className="detail-gallery-row">

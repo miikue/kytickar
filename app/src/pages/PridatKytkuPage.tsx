@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getFileUrl } from '../api/http';
 import type { Druh, Medium, Rod, Umisteni } from '../types/app';
+import PhotoSourceModal from '../components/PhotoSourceModal';
 
 type NewPlantForm = {
   vlastniJmeno: string;
@@ -117,6 +118,7 @@ export default function PridatKytkuPage({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [selectedRodFilterId, setSelectedRodFilterId] = useState('');
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   useEffect(() => {
     if (!initialPhoto) {
@@ -177,7 +179,7 @@ export default function PridatKytkuPage({
                   <button
                     type="button"
                     className="photo-action-btn secondary"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setIsPhotoModalOpen(true)}
                   >
                     🔄 Změnit
                   </button>
@@ -204,12 +206,12 @@ export default function PridatKytkuPage({
           ) : (
             <div
               className="add-plant-photo-dropzone"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setIsPhotoModalOpen(true)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                  fileInputRef.current?.click();
+                  setIsPhotoModalOpen(true);
                 }
               }}
             >
@@ -224,6 +226,15 @@ export default function PridatKytkuPage({
               <span className="photo-dropzone-btn">+ Přidat fotku</span>
             </div>
           )}
+
+          <PhotoSourceModal
+            isOpen={isPhotoModalOpen}
+            onClose={() => setIsPhotoModalOpen(false)}
+            onPhotoSelected={(file) => {
+              setInitialPhoto(file);
+              setInitialPhotoMessage(null);
+            }}
+          />
 
           <input
             ref={fileInputRef}

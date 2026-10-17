@@ -15,6 +15,8 @@ import { useUmisteniManager } from '../hooks/useUmisteniManager';
 import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
 import { logActivity } from '../api/activityApi';
 import { notificationService } from '../services/notificationService';
+import { localDb } from '../services/localDb';
+import { setPhotoUrlCache } from '../api/http';
 
 export default function MainPage() {
   const [activeTab, setActiveTab] = useState<NavTab>('kytky');
@@ -39,6 +41,13 @@ export default function MainPage() {
         listenerPromise.then((handle) => handle.remove()).catch(() => {});
       };
     }
+
+    // 3. Předehřátí mezipaměti fotografií z IndexedDB
+    localDb.getAllPhotos().then((photos) => {
+      for (const p of photos) {
+        if (p.dataUrl) setPhotoUrlCache(p.fileName, p.dataUrl);
+      }
+    }).catch(() => {});
   }, []);
 
   const handleCancelDetail = () => {
@@ -141,6 +150,11 @@ export default function MainPage() {
             rody={rody}
             umisteni={umisteni}
             typyAkci={typyAkci}
+            rostliny={rostliny}
+            onSelectDruhForAdd={(druhId) => {
+              rostlinyManager.setNewPlant((prev) => ({ ...prev, druhId: String(druhId) }));
+              setActiveTab('pridat');
+            }}
             druhyManager={druhyManager}
             mediaManager={mediaManager}
             rodyManager={rodyManager}

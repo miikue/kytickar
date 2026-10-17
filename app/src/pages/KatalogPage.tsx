@@ -4,7 +4,7 @@ import MediaPage from './MediaPage';
 import RodyPage from './RodyPage';
 import UmisteniPage from './UmisteniPage';
 import TypyAkciPage from './TypyAkciPage';
-import type { Druh, Medium, Rod, TypAkce, Umisteni } from '../types/app';
+import type { Druh, Medium, Rod, Rostlina, TypAkce, Umisteni } from '../types/app';
 import type { useDruhyManager } from '../hooks/useDruhyManager';
 import type { useMediaManager } from '../hooks/useMediaManager';
 import type { useRodyManager } from '../hooks/useRodyManager';
@@ -19,6 +19,8 @@ type Props = {
   rody: Rod[];
   umisteni: Umisteni[];
   typyAkci: TypAkce[];
+  rostliny?: Rostlina[];
+  onSelectDruhForAdd?: (druhId: number) => void;
   druhyManager: ReturnType<typeof useDruhyManager>;
   mediaManager: ReturnType<typeof useMediaManager>;
   rodyManager: ReturnType<typeof useRodyManager>;
@@ -34,6 +36,8 @@ export default function KatalogPage({
   rody,
   umisteni,
   typyAkci,
+  rostliny,
+  onSelectDruhForAdd,
   druhyManager,
   mediaManager,
   rodyManager,
@@ -115,6 +119,8 @@ export default function KatalogPage({
             removeDruh={druhyManager.removeDruh}
             druhMessage={druhyManager.druhMessage}
             setDruhMessage={druhyManager.setDruhMessage}
+            rostliny={rostliny}
+            onSelectDruhForAdd={onSelectDruhForAdd}
           />
         )}
 

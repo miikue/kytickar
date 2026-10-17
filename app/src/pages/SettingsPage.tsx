@@ -298,7 +298,10 @@ export default function SettingsPage({ onDataReload }: Props) {
             </div>
             <div className="stat-box">
               <span className="stat-number">{stats.photosCount}</span>
-              <span className="stat-label">Fotografií</span>
+              <span className="stat-label">Fotografií celkem</span>
+              <span className="stat-sublabel">
+                {stats.userPhotosCount} vašich kytek · {stats.catalogPhotosCount} druhů
+              </span>
             </div>
             <div className="stat-box">
               <span className="stat-number">{stats.historieCount}</span>

@@ -8,6 +8,8 @@ export type StorageStats = {
   umisteniCount: number;
   historieCount: number;
   photosCount: number;
+  userPhotosCount: number;
+  catalogPhotosCount: number;
   approximateSizeKb: number;
 };
 
@@ -175,6 +177,10 @@ export const backupService = {
     const parsedData = JSON.parse(dbText);
     await localDb.importAllData(parsedData);
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
+    }
+
     // 2. Import photos from 'fotky/' or any image file in archive
     let photosImported = 0;
     const photoFiles = Object.keys(zip.files).filter((path) => {
@@ -200,10 +206,6 @@ export const backupService = {
 
       await localDb.savePhoto(filename, dataUrl);
       photosImported++;
-    }
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
     }
 
     const plantsCount = parsedData?.data?.rostliny?.length ?? parsedData?.rostliny?.length ?? 0;
@@ -237,14 +239,26 @@ export const backupService = {
     const jsonSize = JSON.stringify(data).length;
     const approxTotalBytes = photosSize + jsonSize;
 
-    // Počítat unikátní fotografie v IndexedDB a referencích
-    const uniquePhotoNames = new Set<string>();
-    for (const p of photos) if (p.fileName) uniquePhotoNames.add(p.fileName);
-    for (const g of (d.galerieFotky || [])) if (g.fotkaName) uniquePhotoNames.add(g.fotkaName);
+    // Počítat unikátní fotografie v IndexedDB a referencích rozdělené na druhy vs uživatelské
+    const catalogPhotoNames = new Set<string>();
     for (const dr of (d.druhy || [])) {
-      if (dr.fotka1Name) uniquePhotoNames.add(dr.fotka1Name);
-      if (dr.fotka2Name) uniquePhotoNames.add(dr.fotka2Name);
+      if (dr.fotka1Name) catalogPhotoNames.add(dr.fotka1Name.replace(/^(\/?species\/|\/?fotky\/)/, ''));
+      if (dr.fotka2Name) catalogPhotoNames.add(dr.fotka2Name.replace(/^(\/?species\/|\/?fotky\/)/, ''));
     }
+
+    const userPhotoNames = new Set<string>();
+    for (const g of (d.galerieFotky || [])) {
+      if (g.fotkaName) userPhotoNames.add(g.fotkaName.replace(/^(\/?species\/|\/?fotky\/)/, ''));
+    }
+
+    for (const p of photos) {
+      const clean = (p.fileName || '').replace(/^(\/?species\/|\/?fotky\/)/, '');
+      if (clean && !catalogPhotoNames.has(clean)) {
+        userPhotoNames.add(clean);
+      }
+    }
+
+    const totalUniqueCount = Math.max(photos.length, catalogPhotoNames.size + userPhotoNames.size);
 
     return {
       rostlinyCount: d.rostliny?.length || 0,
@@ -252,7 +266,9 @@ export const backupService = {
       mediaCount: d.media?.length || 0,
       umisteniCount: d.umisteni?.length || 0,
       historieCount: d.historiePece?.length || 0,
-      photosCount: Math.max(photos.length, uniquePhotoNames.size),
+      photosCount: totalUniqueCount,
+      userPhotosCount: userPhotoNames.size,
+      catalogPhotosCount: catalogPhotoNames.size,
       approximateSizeKb: Math.max(1, Math.round(approxTotalBytes / 1024)),
     };
   },
