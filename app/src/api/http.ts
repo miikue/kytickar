@@ -1,5 +1,3 @@
-import { Capacitor } from '@capacitor/core';
-import { API_BASE_URL } from '../config';
 import { localDb } from '../services/localDb';
 
 export const DEFAULT_PLANT_ICON =
@@ -51,11 +49,7 @@ export function getFileUrl(fileName: string | null | undefined): string {
   const cached = photoUrlCache.get(cleanName);
   if (cached) return cached;
 
-  const fallbackUrl = fileName.startsWith('/')
-    ? fileName
-    : API_BASE_URL
-    ? `${API_BASE_URL}/api/files/${cleanName}`
-    : `/species/${cleanName}`;
+  const fallbackUrl = fileName.startsWith('/') ? fileName : `/species/${cleanName}`;
 
   if (pendingLookups.has(cleanName)) {
     return fallbackUrl;
@@ -82,8 +76,6 @@ export function getFileUrl(fileName: string | null | undefined): string {
 
   return fallbackUrl;
 }
-
-const isStandaloneMode = Capacitor.isNativePlatform() || !API_BASE_URL;
 
 async function handleLocalRequest<T>(
   path: string,
@@ -208,37 +200,12 @@ async function handleLocalRequest<T>(
     return (await localDb.logActivity(body)) as unknown as T;
   }
 
-  // 11. Dev overview & table
-  if (url === '/api/dev/overview' && method === 'GET') {
-    return (await localDb.getDevOverview()) as unknown as T;
-  }
-  const matchDevTable = url.match(/^\/api\/dev\/table\/(.+)$/);
-  if (matchDevTable && method === 'GET') {
-    const tableName = matchDevTable[1] as any;
-    return (await localDb.getDevTable(tableName)) as unknown as T;
-  }
-
-  throw new Error(`Neznamy offline endpoint: ${method} ${path}`);
+  throw new Error(`Neznámý offline endpoint: ${method} ${path}`);
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  if (isStandaloneMode) {
-    const res = await handleLocalRequest<T>(path, 'GET');
-    return res as T;
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} for ${path}`);
-    }
-    return (await response.json()) as T;
-  } catch (error) {
-    // Fallback na localDb pokud je server nedostupny
-    console.warn(`Server nedostupny (${path}), pouzivam offline data:`, error);
-    const res = await handleLocalRequest<T>(path, 'GET');
-    return res as T;
-  }
+  const res = await handleLocalRequest<T>(path, 'GET');
+  return res as T;
 }
 
 export async function apiSend<T>(
@@ -246,38 +213,48 @@ export async function apiSend<T>(
   method: 'POST' | 'PUT' | 'DELETE',
   body?: unknown
 ): Promise<T | null> {
-  if (isStandaloneMode) {
-    return await handleLocalRequest<T>(path, method, body);
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(payload?.message || `HTTP ${response.status} for ${path}`);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return (await response.json()) as T;
-  } catch (error) {
-    console.warn(`Server nedostupny (${method} ${path}), pouzivam offline data:`, error);
-    return await handleLocalRequest<T>(path, method, body);
-  }
+  return await handleLocalRequest<T>(path, method, body);
 }
 
 export async function uploadFile(file: File): Promise<string> {
-  if (isStandaloneMode) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async () => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const maxWidth = 1440;
+          let { width, height } = img;
+          if (width > maxWidth || height > maxWidth) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxWidth) / height);
+              height = maxWidth;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          let dataUrl: string;
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          } else {
+            dataUrl = reader.result as string;
+          }
+
+          const fileName = `foto_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;
+          await localDb.savePhoto(fileName, dataUrl);
+          photoUrlCache.set(fileName, dataUrl);
+          resolve(fileName);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = async () => {
         try {
           const dataUrl = reader.result as string;
           const ext = file.name.split('.').pop() || 'jpg';
@@ -289,44 +266,9 @@ export async function uploadFile(file: File): Promise<string> {
           reject(err);
         }
       };
-      reader.onerror = () => reject(new Error('Chyba pri cteni souboru.'));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Upload souboru selhal.');
-    }
-
-    const payload = (await response.json()) as { fileName: string };
-    return payload.fileName;
-  } catch (err) {
-    console.warn('Upload na server selhal, ukladam lokalne do telefonu:', err);
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const dataUrl = reader.result as string;
-          const ext = file.name.split('.').pop() || 'jpg';
-          const fileName = `foto_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-          await localDb.savePhoto(fileName, dataUrl);
-          photoUrlCache.set(fileName, dataUrl);
-          resolve(fileName);
-        } catch (e) {
-          reject(e);
-        }
-      };
-      reader.onerror = () => reject(new Error('Chyba pri cteni souboru.'));
-      reader.readAsDataURL(file);
-    });
-  }
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error('Chyba při čtení souboru.'));
+    reader.readAsDataURL(file);
+  });
 }

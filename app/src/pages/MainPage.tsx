@@ -33,12 +33,63 @@ export default function MainPage() {
     // 1. Přepočet a aktualizace systémových připomínek při spuštění aplikace
     notificationService.rescheduleAllReminders().catch(() => {});
 
-    // 2. Reakce na klepnutí na notifikaci v liště telefonu (přepne do Moje kytky)
+    // 2. Reakce na klepnutí na notifikaci a akční tlačítka v liště telefonu
     let removeNotificationListener: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
-      LocalNotifications.addListener('localNotificationActionPerformed', () => {
-        setActiveTab('kytky');
-        setIsDetailOpen(false);
+      LocalNotifications.addListener('localNotificationActionPerformed', async (notificationAction) => {
+        const { actionId, notification } = notificationAction;
+        const extra = notification.extra || {};
+
+        if (actionId === 'water') {
+          // Rychlé zalití přímo z notifikace
+          if (extra.plantId) {
+            try {
+              await localDb.rychleZaliti(Number(extra.plantId));
+              await reload(false);
+            } catch (err) {
+              console.error('Chyba rychlého zalití z notifikace:', err);
+            }
+          }
+        } else if (actionId === 'snooze') {
+          // Odložení o 2 dny přímo z notifikace
+          if (extra.plantId) {
+            try {
+              await localDb.odlozitZaliti(Number(extra.plantId), 2);
+              await reload(false);
+            } catch (err) {
+              console.error('Chyba odložení z notifikace:', err);
+            }
+          }
+        } else if (actionId === 'snooze_all') {
+          // Hromadné odložení o 2 dny přímo z notifikace
+          if (Array.isArray(extra.plantIds)) {
+            try {
+              for (const pId of extra.plantIds) {
+                await localDb.odlozitZaliti(Number(pId), 2);
+              }
+              await reload(false);
+            } catch (err) {
+              console.error('Chyba hromadného odložení z notifikace:', err);
+            }
+          }
+        } else {
+          // Klepnutí na tělo notifikace
+          if (notification.id === 8888 || notification.channelId === 'kytickar-backup') {
+            setActiveTab('nastaveni');
+            setIsDetailOpen(false);
+          } else {
+            setActiveTab('kytky');
+            if (extra.plantId) {
+              setTimeout(() => {
+                window.dispatchEvent(
+                  new CustomEvent('kytickar-open-plant-detail', { detail: Number(extra.plantId) })
+                );
+              }, 120);
+            } else {
+              setIsDetailOpen(false);
+            }
+          }
+        }
       })
         .then((handle) => {
           removeNotificationListener = () => {

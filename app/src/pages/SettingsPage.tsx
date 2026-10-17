@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { backupService, type StorageStats, type BackupStatus } from '../services/backupService';
 import { notificationService, type NotificationSettings } from '../services/notificationService';
 import { useBackButton } from '../hooks/useBackButton';
+import { APP_VERSION } from '../config';
 
 type Props = {
   onDataReload: () => Promise<void>;
@@ -33,7 +34,7 @@ export default function SettingsPage({ onDataReload }: Props) {
       setStats(s);
       setBackupStatus(backupService.getBackupStatus());
     } catch (err) {
-      console.error('Chyba pri nacitani statistik:', err);
+      console.error('Chyba při načítání statistik:', err);
     }
   };
 
@@ -574,7 +575,7 @@ export default function SettingsPage({ onDataReload }: Props) {
           <span className="settings-icon">🌿</span>
           <div>
             <h3 className="settings-card-title">O aplikaci Kytičkář</h3>
-            <p className="settings-card-desc">Verze 1.0.0 (Mobilní offline edice)</p>
+            <p className="settings-card-desc">Verze {APP_VERSION} (Mobilní offline edice)</p>
           </div>
         </div>
 

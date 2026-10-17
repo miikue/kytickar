@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
 const publicSpeciesDir = path.join(appRoot, 'public', 'species');
 const defaultDataPath = path.join(appRoot, 'src', 'data', 'defaultData.json');
-const repoDbPath = path.resolve(appRoot, '..', 'default-data', 'db.json');
+const repoDbPath = defaultDataPath;
 
 const WIKI_MAPPING = {
   9: { slug: 'cryptanthus_rubin_star', terms: ['Cryptanthus', 'Cryptanthus bivittatus'] },

@@ -270,6 +270,19 @@ export default function KytkyPage({
   }, [rostliny, selectedRostlina]);
 
   useEffect(() => {
+    const handleOpenDetail = (e: any) => {
+      if (e.detail) {
+        setSelectedId(Number(e.detail));
+        onDetailOpenChange?.(true);
+      }
+    };
+    window.addEventListener('kytickar-open-plant-detail', handleOpenDetail);
+    return () => {
+      window.removeEventListener('kytickar-open-plant-detail', handleOpenDetail);
+    };
+  }, [onDetailOpenChange]);
+
+  useEffect(() => {
     if (!selectedRostlina) {
       setIsEditing(false);
       setEditForm(EMPTY_EDIT_FORM);

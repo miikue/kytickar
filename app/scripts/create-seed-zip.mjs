@@ -8,12 +8,12 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 
 async function createSeedZip() {
-  const dbJsonPath = path.join(rootDir, 'default-data', 'db.json');
+  const dbJsonPath = path.join(rootDir, 'app', 'src', 'data', 'defaultData.json');
   const speciesDir = path.join(rootDir, 'app', 'public', 'species');
   const outputZipPath = path.join(rootDir, 'default-data', 'kytickar_seed.zip');
 
   if (!fs.existsSync(dbJsonPath)) {
-    console.error('db.json not found at', dbJsonPath);
+    console.error('defaultData.json not found at', dbJsonPath);
     process.exit(1);
   }
 

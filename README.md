@@ -1,187 +1,97 @@
-# kytickar
+# Kytičkář 🌿
 
-Jednoduchy plant dashboard pro vlastni testovani.
+Moderní mobilní a webová offline-first aplikace pro evidenci pokojových rostlin, plánování zálivky a zaznamenávání péče.
 
-## Rychly tutorial: Debian VM (test nasazeni)
+Aplikace funguje 100% lokálně v zařízení bez nutnosti externího serveru nebo internetového připojení. Veškerá data a fotografie jsou ukládány přímo do lokální databáze (IndexedDB).
 
-Tento postup je schvalne jednoduchy. Vhodne pro lokalni/staging test bez slozite infrastruktury.
+---
 
-### 1) Instalace zakladnich balicku
+## 🛠 Použité technologie
 
-```bash
-sudo apt update
-sudo apt install -y git curl build-essential
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+- **Frontend:** React 19, TypeScript, Vite
+- **Mobilní platforma:** [Capacitor 8](https://capacitorjs.com/) (Android)
+- **Lokální úložiště:** IndexedDB (fotografie, historie péče, botanické druhy, umístění)
+- **Notifikace:** `@capacitor/local-notifications` (plánování ranních připomínek péče přímo v zařízení)
+- **Zálohování:** JSZip (kompletní export/import databáze a fotografií do formátu `.zip`)
 
-node -v
-npm -v
-```
+---
 
-### 2) Stazeni projektu
-
-```bash
-git clone <TVUJ_REPO_URL>
-cd kytickar
-```
-
-### 3) Setup skripty
-
-Pouze stazeni balicku:
-
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-Vse najednou (balicky + build + DB):
-
-```bash
-chmod +x setup-all.sh
-./setup-all.sh
-```
-
-Skript `setup-all.sh` udela poradi: instalace balicku (backend + frontend) -> build frontendu -> init DB + seed.
-Init DB je samostatne ve skriptu `./init-db.sh`.
-
-**NEBO ručně po krocích:**
-
-### 3a) Backend: instalace + DB + seed
-
-```bash
-cd app/backend
-npm install
-npx prisma migrate deploy
-npm run db:seed
-```
-
-Nebo samostatne skriptem z rootu repa:
-
-```bash
-bash ./init-db.sh
-```
-
-### 4) Spusteni backendu
-
-```bash
-cd app/backend
-npm run start
-```
-
-Backend bezi defaultne na portu `4000`.
-
-### 5) Frontend: instalace + spusteni
-
-Otevri druhy terminal:
-
-```bash
-cd kytickar/app
-npm install
-npm run dev -- --host 0.0.0.0 --port 5173
-```
-
-Frontend bezi na portu `5173`.
-
-### 6) Otevreni aplikace
-
-V prohlizeci otevri:
+## 📁 Struktura repozitáře
 
 ```text
-http://IP_TVE_VM:5173
+kytickar/
+├── app/                      # Hlavní aplikace (PWA + Capacitor)
+│   ├── android/              # Nativní Android projekt (Gradle, Java)
+│   ├── public/               # Statické ikony a fotografie druhů
+│   ├── src/
+│   │   ├── api/              # Klientské rozhraní pro práci s daty
+│   │   ├── components/       # Znovupoužitelné UI komponenty
+│   │   ├── data/             # Výchozí datová sada (defaultData.json)
+│   │   ├── hooks/            # React hooky pro správu entit
+│   │   ├── pages/            # Hlavní obrazovky (Kytky, Druhy, Nastavení...)
+│   │   └── services/         # Služby (IndexedDB, notifikace, zálohy, fotoaparát)
+│   └── scripts/              # Pomocné skripty pro přípravu datových sad
+├── default-data/             # Záložní balíčky a datové archivy
+└── README.md
 ```
 
-## Spusteni jako sluzba (systemd, bez terminalu)
+---
 
-Pokud chces, aby app bezela i po odhlaseni/restartu VM, pouzij systemd.
+## 🚀 Rychlý start (Vývoj)
 
-### 1) Priprav frontend build
+### 1. Požadavky
+- Node.js 20+
+- npm 10+
+- (Volitelně pro Android) Android Studio s Android SDK 34+ a JDK 17+
+
+### 2. Spuštění vývojového serveru
 
 ```bash
 cd app
 npm install
+npm run dev
+```
+
+Aplikace poběží lokálně na `http://localhost:5173`.
+
+### 3. Sestavení produkčního buildu
+
+```bash
+cd app
 npm run build
 ```
 
-### 2) Zkopiruj service soubory do systemd
+Výsledné statické soubory se vygenerují do složky `app/dist/`.
 
-V repu jsou pripravene sablony (bezici jako root):
+---
 
-- `deploy/systemd/kytickar-backend.service`
-- `deploy/systemd/kytickar-frontend.service`
+## 📱 Sestavení pro Android
 
-Automaticky (doporuceno):
+Projekt využívá Ionic Capacitor pro sestavení nativní Android aplikace.
 
-```bash
-chmod +x setup-services.sh
-sudo ./setup-services.sh
-```
+1. **Sestavte webovou část a synchronizujte Android projekt:**
+   ```bash
+   cd app
+   npm run build
+   npx cap sync android
+   ```
 
-Nebo rucne:
+2. **Otevření v Android Studio:**
+   ```bash
+   npx cap open android
+   ```
+   Nebo sestavte ladicí APK přímo z příkazové řádky:
+   ```bash
+   cd app/android
+   ./gradlew assembleDebug
+   ```
+   Výsledný instalační balíček se nachází v `app/android/app/build/outputs/apk/debug/app-debug.apk`.
 
-Zkopiruj je:
+---
 
-```bash
-cp deploy/systemd/kytickar-backend.service /etc/systemd/system/
-cp deploy/systemd/kytickar-frontend.service /etc/systemd/system/
-```
+## 💾 Zálohování a obnova dat
 
-### 3) Zapni a spust sluzby
-
-```bash
-systemctl daemon-reload
-systemctl enable --now kytickar-backend
-systemctl enable --now kytickar-frontend
-```
-
-### 4) Kontrola stavu
-
-```bash
-systemctl status kytickar-backend
-systemctl status kytickar-frontend
-```
-
-### 5) Logy
-
-```bash
-sudo journalctl -u kytickar-backend -f
-sudo journalctl -u kytickar-frontend -f
-```
-
-### 6) Po update kodu
-
-```bash
-cd ~/kytickar/app/backend && npm install
-cd ~/kytickar/app && npm install && npm run build
-
-sudo systemctl restart kytickar-backend
-sudo systemctl restart kytickar-frontend
-```
-
-## Dulezite poznamky
-
-- SQLite databaze je v `app/backend/prisma/dev.db`.
-- Uploady fotek jsou v `app/backend/uploads`.
-- V dev rezimu se po restartu VM procesy automaticky neobnovi (pro testovani normalni).
-
-## Kratky troubleshoot
-
-### Port nejde otevrit
-
-- Over firewall na VM (napr. `ufw`), povol `5173` a `4000`.
-- Over, ze opravdu bezis s `--host 0.0.0.0`.
-
-### Chybi data
-
-Spust znovu seed:
-
-```bash
-cd app/backend
-npm run db:seed
-```
-
-### Chci cistou DB od zacatku
-
-```bash
-cd app/backend
-npx prisma migrate reset --force --skip-generate
-```
+Vzhledem k tomu, že Kytičkář běží plně offline:
+- Zálohu lze kdykoliv vytvořit v záložce **Nastavení -> Exportovat zálohu (.ZIP)**.
+- Archiv obsahuje strukturovanou databázi `db.json` a složku `fotky/` se všemi zaznamenanými fotografiemi rostlin.
+- Archiv lze stejným způsobem kdykoliv obnovit na jiném telefonu nebo v prohlížeči.

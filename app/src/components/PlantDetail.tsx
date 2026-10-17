@@ -285,7 +285,8 @@ const PlantDetail = forwardRef<HTMLElement, Props>(function PlantDetail(
                     <div>
                       <h3 className="section-card-title">Fotogalerie</h3>
                       <p className="section-card-desc">
-                        {galerie.length} {galerie.length === 1 ? 'fotografie' : 'fotografií'}
+                        {galerie.length}{' '}
+                        {galerie.length >= 1 && galerie.length <= 4 ? 'fotografie' : 'fotografií'}
                       </p>
                     </div>
                   </div>
@@ -412,7 +413,12 @@ const PlantDetail = forwardRef<HTMLElement, Props>(function PlantDetail(
                   <div>
                     <h3 className="section-card-title">Historie péče</h3>
                     <p className="section-card-desc">
-                      {historie.length} {historie.length === 1 ? 'záznam' : 'záznamů'}
+                      {historie.length}{' '}
+                      {historie.length === 1
+                        ? 'záznam'
+                        : historie.length >= 2 && historie.length <= 4
+                        ? 'záznamy'
+                        : 'záznamů'}
                     </p>
                   </div>
                 </div>

@@ -112,6 +112,25 @@ export const notificationService = {
         vibration: true,
         visibility: 1,
       });
+
+      // Registrace akčních tlačítek přímo v notifikaci
+      await LocalNotifications.registerActionTypes({
+        types: [
+          {
+            id: 'CARE_SINGLE_WATER',
+            actions: [
+              { id: 'water', title: '💧 Zalito' },
+              { id: 'snooze', title: '⏰ Odložit (2 dny)' },
+            ],
+          },
+          {
+            id: 'CARE_MULTIPLE',
+            actions: [
+              { id: 'snooze_all', title: '⏰ Odložit vše (2 dny)' },
+            ],
+          },
+        ],
+      });
     } catch (err) {
       console.warn('ensureChannel error:', err);
     }
@@ -147,7 +166,7 @@ export const notificationService = {
     } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       new Notification('🌿 Kytičkář: Zkouška oznámení', {
         body: 'Notifikace a připomínky fungují správně! Kytičkář vás včas upozorní na péči o rostliny.',
-        icon: '/image.png',
+        icon: '/favicon.png',
       });
     }
   },
@@ -197,6 +216,7 @@ export const notificationService = {
     // 5. Analýza úkonů pro každou rostlinu
     // Spočítáme pro každou rostlinu a typ akce přesné datum, kdy je úkon splatný (dueDate)
     type DueTask = {
+      plantId: number;
       plantName: string;
       actionName: string;
       actionIcon: string;
@@ -240,6 +260,7 @@ export const notificationService = {
         }
 
         dueTasks.push({
+          plantId: plant.id,
           plantName: plant.vlastniJmeno,
           actionName: typ.typAkce,
           actionIcon: typ.ikona || '🌱',
@@ -249,13 +270,13 @@ export const notificationService = {
       }
     }
 
-    // 6. Seskupení úkolů do příštích 14 kalendářních dnů (den 0 = dnes, den 1 = zítra, ...)
+    // 6. Seskupení úkolů do příštích 30 kalendářních dnů (den 0 = dnes, den 1 = zítra, ... den 30)
+    // Horizont prodloužen na 30 dní a úkoly po splatnosti se opakují každý den, dokud nejsou splněny!
     const notificationsToSchedule: any[] = [];
     let firstReminderDate: string | null = null;
 
-    for (let dayOffset = 0; dayOffset <= 14; dayOffset++) {
+    for (let dayOffset = 0; dayOffset <= 30; dayOffset++) {
       // Kalendářní výpočet hranic dne nezávislý na posunech letního a zimního času (DST)
-      const targetDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 0, 0, 0, 0);
       const targetDayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 23, 59, 59, 999);
 
       // Přesný čas odeslání notifikace v daný den (např. 09:00 ráno v místním čase daného dne)
@@ -274,33 +295,41 @@ export const notificationService = {
         continue;
       }
 
-      // Úkoly, které jsou splatné v tento den (nebo pro den 0 i dříve nezpracované z minulosti)
-      const tasksForDay = dueTasks.filter((t) => {
-        if (dayOffset === 0) {
-          return t.dueDate <= targetDayEnd;
-        }
-        return t.dueDate >= targetDayStart && t.dueDate <= targetDayEnd;
-      });
+      // Úkoly, které jsou splatné k tomuto dni (včetně nevyřešených z předchozích dnů).
+      // Pokud úkol nebyl splněn, zůstává aktivní a připomíná se každý den!
+      const tasksForDay = dueTasks.filter((t) => t.dueDate <= targetDayEnd);
 
       if (tasksForDay.length > 0) {
         let title = '🌿 Kytičkář – Čas na péči';
         let body = '';
+        let actionTypeId: string | undefined;
+        const extra: any = { dayOffset };
 
         if (tasksForDay.length === 1) {
           const t = tasksForDay[0];
           title = `${t.actionIcon} ${t.plantName}`;
           body = `Je čas na ${t.actionName.toLowerCase()}!`;
+          extra.plantId = t.plantId;
+          extra.isWatering = t.isWatering;
+          // Akční tlačítka pro jednu kytku: Zalito a Odložit
+          if (t.isWatering) {
+            actionTypeId = 'CARE_SINGLE_WATER';
+          }
         } else if (tasksForDay.length <= 3) {
           const summary = tasksForDay.map((t) => `${t.plantName} (${t.actionName.toLowerCase()})`).join(', ');
           body = `Dnes potřebují péči: ${summary}`;
+          actionTypeId = 'CARE_MULTIPLE';
+          extra.plantIds = tasksForDay.map((t) => t.plantId);
         } else {
           const wateringCount = tasksForDay.filter((t) => t.isWatering).length;
           const otherCount = tasksForDay.length - wateringCount;
           if (wateringCount > 0 && otherCount > 0) {
             body = `Dnes potřebuje zalít ${wateringCount} ${wateringCount === 1 ? 'kytička' : wateringCount < 5 ? 'kytičky' : 'kytiček'} a dalších ${otherCount} úkonů péče.`;
           } else {
-            body = `Dnes čeká péče celkem ${tasksForDay.length} ${tasksForDay.length < 5 ? 'kytičky' : 'kytiček'}.`;
+            body = `Dnes čeká péče celkem ${tasksForDay.length} ${tasksForDay.length === 1 ? 'kytičku' : tasksForDay.length < 5 ? 'kytičky' : 'kytiček'}.`;
           }
+          actionTypeId = 'CARE_MULTIPLE';
+          extra.plantIds = tasksForDay.map((t) => t.plantId);
         }
 
         if (!firstReminderDate) {
@@ -317,6 +346,8 @@ export const notificationService = {
           id: 1000 + dayOffset,
           title,
           body,
+          actionTypeId,
+          extra,
           schedule: {
             at: scheduledDateTime,
             allowWhileIdle: true,

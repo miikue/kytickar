@@ -1,8 +1,5 @@
 import type {
   ActivityLog,
-  DevOverview,
-  DevTableName,
-  DevTableResponse,
   Druh,
   GalerieFotka,
   HistoriePece,
@@ -25,7 +22,7 @@ function openDb(): Promise<IDBDatabase> {
 
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
-      reject(new Error('IndexedDB neni podporovano v tomto prostredi.'));
+      reject(new Error('IndexedDB není podporováno v tomto prostředí.'));
       return;
     }
 
@@ -83,7 +80,6 @@ function openDb(): Promise<IDBDatabase> {
 
       try {
         await seedDbIfNeeded(db);
-        await ensureDemoPhotoFile(db);
         await ensureTypyAkciDefaults(db);
         await pruneActivityLogIfNeeded(db);
         await cleanupOrphanedPhotos(db);
@@ -230,34 +226,6 @@ async function seedDbIfNeeded(db: IDBDatabase): Promise<void> {
   if (mediaCount > 0) return;
 
   await applyDataToStores(db, (defaultData as any).data);
-  await ensureDemoPhotoFile(db);
-}
-
-export async function ensureDemoPhotoFile(db: IDBDatabase): Promise<void> {
-  try {
-    const existingPhoto = await getFromStore<{ fileName: string; dataUrl: string }>(db, 'photos', 'image.png');
-    if (!existingPhoto) {
-      try {
-        const resp = await fetch('/image.png');
-        if (resp.ok) {
-          const blob = await resp.blob();
-          const reader = new FileReader();
-          const dataUrl = await new Promise<string>((res, rej) => {
-            reader.onloadend = () => res(reader.result as string);
-            reader.onerror = () => rej(reader.error);
-            reader.readAsDataURL(blob);
-          });
-          if (dataUrl) {
-            await putToStore(db, 'photos', { fileName: 'image.png', dataUrl });
-          }
-        }
-      } catch (fetchErr) {
-        console.warn('Nepodařilo se přednačíst /image.png do IndexedDB:', fetchErr);
-      }
-    }
-  } catch (err) {
-    console.warn('ensureDemoPhotoFile warning:', err);
-  }
 }
 
 export function getDefaultActionIcon(name: string): string {
@@ -364,7 +332,6 @@ async function cleanupOrphanedPhotos(db: IDBDatabase): Promise<void> {
     ]);
 
     const usedFileNames = new Set<string>();
-    usedFileNames.add('image.png');
 
     for (const g of galerie) {
       if (g.fotkaName) {
@@ -610,7 +577,7 @@ export const localDb = {
     const plants = await getAllFromStore<any>(db, 'rostliny');
     const usedCount = plants.filter(p => p.druhId === id).length;
     if (usedCount > 0) {
-      throw new Error(`Druh nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'rostlině' : usedCount < 5 ? 'rostlinám' : 'rostlinám'}. Nejprve u nich změňte druh.`);
+      throw new Error(`Druh nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'rostlině' : 'rostlinám'}. Nejprve u nich změňte druh.`);
     }
     await deleteFromStore(db, 'druhy', id);
     return null;
@@ -645,7 +612,7 @@ export const localDb = {
     const druhy = await getAllFromStore<Druh>(db, 'druhy');
     const usedCount = druhy.filter(d => d.rodId === id).length;
     if (usedCount > 0) {
-      throw new Error(`Rod nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'botanickému druhu' : usedCount < 5 ? 'botanickým druhům' : 'botanickým druhům'}. Nejprve u nich změňte rod.`);
+      throw new Error(`Rod nelze smazat, protože je přiřazen k ${usedCount} ${usedCount === 1 ? 'botanickému druhu' : 'botanickým druhům'}. Nejprve u nich změňte rod.`);
     }
     await deleteFromStore(db, 'rody', id);
     return null;
@@ -669,7 +636,7 @@ export const localDb = {
   async updateMedium(id: number, payload: any): Promise<Medium> {
     const db = await openDb();
     const existing = await getFromStore<Medium>(db, 'media', id);
-    if (!existing) throw new Error('Medium nenalezeno');
+    if (!existing) throw new Error('Substrát nenalezen');
     const updated = { ...existing, nazev: payload.nazev ?? existing.nazev, popis: payload.popis !== undefined ? payload.popis : existing.popis };
     await putToStore(db, 'media', updated);
     return updated;
@@ -680,7 +647,7 @@ export const localDb = {
     const plants = await getAllFromStore<any>(db, 'rostliny');
     const usedCount = plants.filter(p => p.mediumId === id).length;
     if (usedCount > 0) {
-      throw new Error(`Substrát nelze smazat, protože je použit u ${usedCount} ${usedCount === 1 ? 'rostliny' : usedCount < 5 ? 'rostlin' : 'rostlin'}. Nejprve u nich zvolte jiný substrát.`);
+      throw new Error(`Substrát nelze smazat, protože je použit u ${usedCount} ${usedCount === 1 ? 'rostliny' : 'rostlin'}. Nejprve u nich zvolte jiný substrát.`);
     }
     await deleteFromStore(db, 'media', id);
     return null;
@@ -704,7 +671,7 @@ export const localDb = {
   async updateUmisteni(id: number, payload: any): Promise<Umisteni> {
     const db = await openDb();
     const existing = await getFromStore<Umisteni>(db, 'umisteni', id);
-    if (!existing) throw new Error('Umisteni nenalezeno');
+    if (!existing) throw new Error('Umístění nenalezeno');
     const updated = {
       ...existing,
       nazev: payload.nazev ?? existing.nazev,
@@ -963,6 +930,20 @@ export const localDb = {
     return { id, rostlinaId, typAkceId: wateringTyp.id, datumPripomenuti, dny: snoozeDays };
   },
 
+  async rychleZaliti(rostlinaId: number): Promise<HistoriePece> {
+    const db = await openDb();
+    const typyAkci = await getAllFromStore<TypAkce>(db, 'typyAkci');
+    const wateringTyp =
+      typyAkci.find((item) => item.isWatering) || typyAkci.find((item) => isWateringAction(item));
+    if (!wateringTyp) throw new Error('Typ akce pro zalévání nenalezen');
+
+    return await this.createHistoriePece({
+      rostlinaId: Number(rostlinaId),
+      typAkceId: wateringTyp.id,
+      datum: new Date().toISOString(),
+    });
+  },
+
   async getAllCareRemindersData(): Promise<{
     rostliny: Rostlina[];
     typyAkci: TypAkce[];
@@ -1008,62 +989,6 @@ export const localDb = {
     const db = await openDb();
     const item = await getFromStore<{ fileName: string; dataUrl: string }>(db, 'photos', fileName);
     return item?.dataUrl || null;
-  },
-
-  async getDevOverview(): Promise<DevOverview> {
-    const db = await openDb();
-    const [media, druhy, umisteni, rostliny, typyAkci, activityLog, historiePece, odlozeneAkce, galerieFotky] =
-      await Promise.all([
-        getAllFromStore<Medium>(db, 'media'),
-        getAllFromStore<Druh>(db, 'druhy'),
-        getAllFromStore<Umisteni>(db, 'umisteni'),
-        this.getRostliny(),
-        getAllFromStore<TypAkce>(db, 'typyAkci'),
-        getAllFromStore<ActivityLog>(db, 'activityLog'),
-        getAllFromStore<HistoriePece>(db, 'historiePece'),
-        getAllFromStore<any>(db, 'odlozeneAkce'),
-        getAllFromStore<GalerieFotka>(db, 'galerieFotky'),
-      ]);
-
-    return {
-      generatedAt: new Date().toISOString(),
-      counts: {
-        media: media.length,
-        druhy: druhy.length,
-        umisteni: umisteni.length,
-        rostliny: rostliny.length,
-        typyAkci: typyAkci.length,
-        activityLog: activityLog.length,
-        historiePece: historiePece.length,
-        odlozeneAkce: odlozeneAkce.length,
-        galerieFotky: galerieFotky.length,
-      },
-      posledniRostliny: rostliny.slice(0, 5).map(r => ({
-        id: r.id,
-        vlastniJmeno: r.vlastniJmeno,
-        aktualniZdravi: r.aktualniZdravi,
-        druh: { nazev: r.druh.nazev },
-      })),
-      posledniHistorie: historiePece.slice(0, 8).map(h => ({
-        id: h.id,
-        datum: h.datum,
-        rostlina: { vlastniJmeno: rostliny.find(r => r.id === h.rostlinaId)?.vlastniJmeno || 'Kytka' },
-        typAkce: { typAkce: typyAkci.find(t => t.id === h.typAkceId)?.typAkce || 'Akce' },
-      })),
-      posledniMedia: media.slice(0, 8),
-      posledniAktivity: activityLog.slice(0, 12).reverse(),
-    };
-  },
-
-  async getDevTable(tableName: DevTableName): Promise<DevTableResponse> {
-    const db = await openDb();
-    const validStore = tableName as string;
-    const rows = await getAllFromStore<any>(db, validStore);
-    return {
-      tableName,
-      rowCount: rows.length,
-      rows: rows.slice(0, 100),
-    };
   },
 
   async exportAllData(): Promise<any> {
@@ -1123,17 +1048,13 @@ export const localDb = {
       // 4. Vložení tabulek ze zálohy
       await applyDataToStores(db, data);
 
-      // 5. Zajištění základního souboru image.png
-      await ensureDemoPhotoFile(db);
-
-      // 6. Doplnění výchozích hodnot typů akcí
+      // 5. Doplnění výchozích hodnot typů akcí
       await ensureTypyAkciDefaults(db);
     } catch (insertErr) {
       console.error('Chyba při vkládání importovaných dat, provádím rollback:', insertErr);
       try {
         await clearAllStores(db, true);
         await applyDataToStores(db, currentSnapshot.data);
-        await ensureDemoPhotoFile(db);
         await ensureTypyAkciDefaults(db);
       } catch (rollbackErr) {
         console.error('Kritická chyba při rollbacku původních dat:', rollbackErr);
@@ -1143,7 +1064,7 @@ export const localDb = {
       );
     }
 
-    // 7. Vyvolání události pro pročištění paměťových keší
+    // 6. Vyvolání události pro pročištění paměťových keší
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
     }
@@ -1164,7 +1085,6 @@ export const localDb = {
     const db = await openDb();
     await clearAllStores(db, true);
     await applyDataToStores(db, (defaultData as any).data);
-    await ensureDemoPhotoFile(db);
     await ensureTypyAkciDefaults(db);
 
     if (typeof window !== 'undefined') {
