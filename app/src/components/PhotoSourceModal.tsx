@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { pickPhoto } from '../services/cameraService';
+import { CameraPermissionError, pickPhoto } from '../services/cameraService';
+import { useBackButton } from '../hooks/useBackButton';
 
 type Props = {
   isOpen: boolean;
@@ -17,10 +18,17 @@ export default function PhotoSourceModal({
   subtitle = 'Vyberte způsob pořízení snímku',
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  useBackButton('photo-source-modal', 100, isOpen, () => {
+    onClose();
+    return true;
+  });
 
   useEffect(() => {
     if (!isOpen) {
       setLoading(false);
+      setPermissionError(null);
       return;
     }
 
@@ -38,14 +46,22 @@ export default function PhotoSourceModal({
 
   async function handleSelect(source: 'camera' | 'photos') {
     try {
+      setPermissionError(null);
       setLoading(true);
       const file = await pickPhoto(source);
       if (file) {
         onPhotoSelected(file);
         onClose();
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Chyba při výběru fotografie:', err);
+      if (err instanceof CameraPermissionError || (err instanceof Error && err.name === 'CameraPermissionError')) {
+        setPermissionError(err.message);
+      } else if (err instanceof Error) {
+        setPermissionError(err.message);
+      } else {
+        setPermissionError('Nepodařilo se otevřít fotoaparát nebo galerii.');
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +77,16 @@ export default function PhotoSourceModal({
           <h3 id="photo-source-modal-title" className="photo-source-modal-title">{title}</h3>
           <p className="photo-source-modal-subtitle">{subtitle}</p>
         </div>
+
+        {permissionError && (
+          <div className="photo-source-error-banner" role="alert">
+            <div className="photo-source-error-header">
+              <span className="photo-source-error-icon">⚠️</span>
+              <strong>Chybí oprávnění</strong>
+            </div>
+            <p className="photo-source-error-desc">{permissionError}</p>
+          </div>
+        )}
 
         {loading ? (
           <div className="photo-source-loading">

@@ -17,6 +17,8 @@ import { logActivity } from '../api/activityApi';
 import { notificationService } from '../services/notificationService';
 import { localDb } from '../services/localDb';
 import { setPhotoUrlCache } from '../api/http';
+import { backButtonService } from '../services/backButtonService';
+import { useBackButton } from '../hooks/useBackButton';
 
 export default function MainPage() {
   const [activeTab, setActiveTab] = useState<NavTab>('kytky');
@@ -24,6 +26,7 @@ export default function MainPage() {
   const [isCatalogEditing, setIsCatalogEditing] = useState(false);
   const [kytkyResetCounter, setKytkyResetCounter] = useState(0);
   const [catalogResetCounter, setCatalogResetCounter] = useState(0);
+  const [showExitToast, setShowExitToast] = useState(false);
   const { rostliny, druhy, rody, media, umisteni, typyAkci, loading, error, reload } = useDashboardData();
 
   useEffect(() => {
@@ -31,23 +34,40 @@ export default function MainPage() {
     notificationService.rescheduleAllReminders().catch(() => {});
 
     // 2. Reakce na klepnutí na notifikaci v liště telefonu (přepne do Moje kytky)
+    let removeNotificationListener: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
-      const listenerPromise = LocalNotifications.addListener('localNotificationActionPerformed', () => {
+      LocalNotifications.addListener('localNotificationActionPerformed', () => {
         setActiveTab('kytky');
         setIsDetailOpen(false);
-      });
-
-      return () => {
-        listenerPromise.then((handle) => handle.remove()).catch(() => {});
-      };
+      })
+        .then((handle) => {
+          removeNotificationListener = () => {
+            void handle.remove();
+          };
+        })
+        .catch(() => {});
     }
 
     // 3. Předehřátí mezipaměti fotografií z IndexedDB
-    localDb.getAllPhotos().then((photos) => {
-      for (const p of photos) {
-        if (p.dataUrl) setPhotoUrlCache(p.fileName, p.dataUrl);
-      }
-    }).catch(() => {});
+    localDb
+      .getAllPhotos()
+      .then((photos) => {
+        for (const p of photos) {
+          if (p.dataUrl) setPhotoUrlCache(p.fileName, p.dataUrl);
+        }
+      })
+      .catch(() => {});
+
+    // 4. Inicializace globální obsluhy tlačítka Zpět
+    backButtonService.init();
+    const unsubscribeExitToast = backButtonService.onExitToastChange((show) => {
+      setShowExitToast(show);
+    });
+
+    return () => {
+      removeNotificationListener?.();
+      unsubscribeExitToast();
+    };
   }, []);
 
   const handleCancelDetail = () => {
@@ -78,6 +98,25 @@ export default function MainPage() {
       setActiveTab(nextTab);
     }
   };
+
+  // Navigace tlačítkem Zpět:
+  // 1. Zrušení editace v katalogu (priorita 60)
+  useBackButton('main-catalog-edit', 60, isCatalogEditing && activeTab === 'katalog', () => {
+    handleCancelCatalogEdit();
+    return true;
+  });
+
+  // 2. Návrat z detailu kytky na seznam (priorita 50)
+  useBackButton('main-detail-open', 50, isDetailOpen && activeTab === 'kytky', () => {
+    handleCancelDetail();
+    return true;
+  });
+
+  // 3. Návrat z vedlejších záložek (Katalog, Přidat kytku, Nastavení) zpět na domovskou záložku 'kytky' (priorita 20)
+  useBackButton('main-tab-nav', 20, activeTab !== 'kytky', () => {
+    handleTabChange('kytky');
+    return true;
+  });
 
   const druhyManager = useDruhyManager(reload);
   const mediaManager = useMediaManager(reload);
@@ -235,6 +274,13 @@ export default function MainPage() {
         isCatalogEditing={isCatalogEditing}
         onCancelCatalogEdit={handleCancelCatalogEdit}
       />
+
+      {/* Exit confirmation toast on double back */}
+      {showExitToast && (
+        <aside className="exit-toast-banner" role="status" aria-live="polite">
+          <span>Stiskněte Zpět znovu pro ukončení</span>
+        </aside>
+      )}
     </div>
   );
 }

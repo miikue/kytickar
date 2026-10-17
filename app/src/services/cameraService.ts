@@ -18,6 +18,13 @@ export function dataUrlToFile(dataUrl: string, fileName?: string): File {
   return new File([u8arr], name, { type: mime });
 }
 
+export class CameraPermissionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CameraPermissionError';
+  }
+}
+
 /**
  * Získá fotografii buď z nativního fotoaparátu, nebo z galerie zařízení.
  * Podporuje jak nativní Capacitor běh (Android/iOS), tak webový fallback.
@@ -26,6 +33,27 @@ export async function pickPhoto(source: 'camera' | 'photos'): Promise<File | nul
   // 1. Zkusit nativní Capacitor Camera
   if (Capacitor.isNativePlatform()) {
     try {
+      const permType = source === 'camera' ? 'camera' : 'photos';
+      const check = await Camera.checkPermissions();
+
+      if (check[permType] === 'prompt' || check[permType] === 'prompt-with-rationale') {
+        const req = await Camera.requestPermissions({ permissions: [permType] });
+        if (req[permType] === 'denied') {
+          const targetName = source === 'camera' ? 'fotoaparátu' : 'fotografiím a galerii';
+          throw new CameraPermissionError(
+            `Přístup k ${targetName} byl odepřen. Povolte prosím oprávnění v Nastavení telefonu (Aplikace → Kytičkář → Oprávnění).`
+          );
+        }
+      } else if (check[permType] === 'denied') {
+        const req = await Camera.requestPermissions({ permissions: [permType] });
+        if (req[permType] === 'denied') {
+          const targetName = source === 'camera' ? 'fotoaparátu' : 'fotografiím a galerii';
+          throw new CameraPermissionError(
+            `Přístup k ${targetName} je v systému zakázán. Povolte prosím oprávnění v Nastavení telefonu (Aplikace → Kytičkář → Oprávnění).`
+          );
+        }
+      }
+
       const image = await Camera.getPhoto({
         quality: 85,
         allowEditing: false,
@@ -42,17 +70,35 @@ export async function pickPhoto(source: 'camera' | 'photos'): Promise<File | nul
       }
       return null;
     } catch (err: unknown) {
+      if (err instanceof CameraPermissionError) {
+        throw err;
+      }
+
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-      // Uživatel akci zrušil (stiskl zpět v kameře/galerii)
+
+      // Detekce odepření oprávnění (Capacitor vrací např. "User denied access to camera")
+      if (
+        msg.includes('denied') ||
+        msg.includes('permission') ||
+        msg.includes('oprávnění') ||
+        msg.includes('not granted')
+      ) {
+        const targetName = source === 'camera' ? 'fotoaparátu' : 'fotografiím a galerii';
+        throw new CameraPermissionError(
+          `Přístup k ${targetName} byl odepřen. Povolte prosím oprávnění v Nastavení telefonu (Aplikace → Kytičkář → Oprávnění).`
+        );
+      }
+
+      // Uživatel akci pouze zrušil (stiskl zpět v kameře/galerii bez focení)
       if (
         msg.includes('cancelled') ||
         msg.includes('canceled') ||
-        msg.includes('user denied') ||
         msg.includes('no image picked') ||
         msg.includes('closed')
       ) {
         return null;
       }
+
       console.warn('Chyba nativní kamery, zkouším fallback:', err);
     }
   }

@@ -6,6 +6,7 @@ export async function createTypAkce(payload: {
   ikona?: string | null;
   intervalDny?: number | null;
   odlozitDny?: number | null;
+  isWatering?: boolean | null;
 }) {
   return apiSend<TypAkce>('/api/typy-akci', 'POST', payload);
 }
@@ -17,6 +18,7 @@ export async function updateTypAkce(
     ikona?: string | null;
     intervalDny?: number | null;
     odlozitDny?: number | null;
+    isWatering?: boolean | null;
   }
 ) {
   return apiSend<TypAkce>(`/api/typy-akci/${id}`, 'PUT', payload);

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import DruhuEditor from '../components/DruhuEditor';
 import { getFileUrl } from '../api/http';
 import type { Druh, Rod, Rostlina } from '../types/app';
+import { useBackButton } from '../hooks/useBackButton';
 
 type DruhForm = {
   nazev: string;
@@ -53,6 +54,24 @@ export default function DruhyPage({
   const [expandedPhoto, setExpandedPhoto] = useState<{ fotkaName: string; poznamka?: string } | null>(null);
 
   const isFormOpen = editingDruhId !== null || isAdding;
+
+  // 1. Zvětšená fotka druhu (priorita 100)
+  useBackButton('druhy-expanded-photo', 100, expandedPhoto !== null, () => {
+    setExpandedPhoto(null);
+    return true;
+  });
+
+  // 2. Detail druhu (priorita 85)
+  useBackButton('druhy-detail-modal', 85, selectedDruhDetail !== null, () => {
+    setSelectedDruhDetail(null);
+    return true;
+  });
+
+  // 3. Formulář pro přidání/editaci druhu (priorita 70)
+  useBackButton('druhy-form', 70, isFormOpen, () => {
+    handleCancel();
+    return true;
+  });
 
   function handleStartAdd() {
     setEditingDruhId(null);

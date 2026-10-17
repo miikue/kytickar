@@ -15,6 +15,8 @@ type Props = {
   setTypAkceInterval: (val: string) => void;
   typAkceOdlozit: string;
   setTypAkceOdlozit: (val: string) => void;
+  typAkceIsWatering: boolean;
+  setTypAkceIsWatering: (val: boolean) => void;
   submitTypAkce: (event: FormEvent) => Promise<void>;
   removeTypAkce: (id: number) => Promise<void>;
   typAkceMessage: string | null;
@@ -33,6 +35,8 @@ export default function TypyAkciPage({
   setTypAkceInterval,
   typAkceOdlozit,
   setTypAkceOdlozit,
+  typAkceIsWatering,
+  setTypAkceIsWatering,
   submitTypAkce,
   removeTypAkce,
   typAkceMessage,
@@ -49,6 +53,7 @@ export default function TypyAkciPage({
     setTypAkceIkona('💧');
     setTypAkceInterval('7');
     setTypAkceOdlozit('2');
+    setTypAkceIsWatering(false);
     setTypAkceMessage(null);
     setIsAdding(true);
   }
@@ -60,6 +65,7 @@ export default function TypyAkciPage({
     setTypAkceIkona(item.ikona || getDefaultActionIcon(item.typAkce));
     setTypAkceInterval(item.intervalDny !== undefined && item.intervalDny !== null ? String(item.intervalDny) : '7');
     setTypAkceOdlozit(item.odlozitDny !== undefined && item.odlozitDny !== null ? String(item.odlozitDny) : '2');
+    setTypAkceIsWatering(Boolean(item.isWatering));
     setTypAkceMessage(null);
   }
 
@@ -70,6 +76,7 @@ export default function TypyAkciPage({
     setTypAkceIkona('💧');
     setTypAkceInterval('7');
     setTypAkceOdlozit('2');
+    setTypAkceIsWatering(false);
     setTypAkceMessage(null);
   }
 
@@ -142,6 +149,8 @@ export default function TypyAkciPage({
           setTypAkceInterval={setTypAkceInterval}
           typAkceOdlozit={typAkceOdlozit}
           setTypAkceOdlozit={setTypAkceOdlozit}
+          typAkceIsWatering={typAkceIsWatering}
+          setTypAkceIsWatering={setTypAkceIsWatering}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           onDelete={removeTypAkce}
@@ -172,6 +181,11 @@ export default function TypyAkciPage({
                   <h4 className="catalog-item-title">{item.typAkce}</h4>
                 </div>
                 <div className="catalog-item-tags-row">
+                  {item.isWatering ? (
+                    <span className="catalog-item-tag watering" title="Považováno za hlavní zálivku">
+                      💧 Zálivka
+                    </span>
+                  ) : null}
                   {item.intervalDny ? (
                     <span className="catalog-item-tag timing" title={`Připomínat každých ${item.intervalDny} dní`}>
                       ⏱️ {item.intervalDny} d

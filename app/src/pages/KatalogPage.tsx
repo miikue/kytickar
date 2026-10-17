@@ -183,6 +183,8 @@ export default function KatalogPage({
             setTypAkceInterval={typyAkciManager.setTypAkceInterval}
             typAkceOdlozit={typyAkciManager.typAkceOdlozit}
             setTypAkceOdlozit={typyAkciManager.setTypAkceOdlozit}
+            typAkceIsWatering={typyAkciManager.typAkceIsWatering}
+            setTypAkceIsWatering={typyAkciManager.setTypAkceIsWatering}
             submitTypAkce={typyAkciManager.submitTypAkce}
             removeTypAkce={typyAkciManager.removeTypAkce}
             typAkceMessage={typyAkciManager.typAkceMessage}

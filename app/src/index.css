@@ -3833,12 +3833,49 @@ input, select, textarea {
   line-height: 1.25;
 }
 
+.action-watering-checkbox-row {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(30, 144, 255, 0.08);
+  border: 1px solid rgba(30, 144, 255, 0.2);
+  border-radius: 12px;
+}
+
+.action-watering-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.action-watering-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #1e88e5;
+  cursor: pointer;
+}
+
+.action-watering-checkbox-text {
+  font-size: 0.85rem;
+  color: #173125;
+  line-height: 1.35;
+}
+
 .catalog-item-tags-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 2px;
+}
+
+.catalog-item-tag.watering {
+  background: rgba(30, 144, 255, 0.12);
+  color: #1565c0;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 999px;
 }
 
 .catalog-item-tag.timing {
@@ -5038,6 +5075,36 @@ input, select, textarea {
   to { transform: rotate(360deg); }
 }
 
+.photo-source-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  text-align: left;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.photo-source-error-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: #991b1b;
+  margin-bottom: 4px;
+}
+
+.photo-source-error-header strong {
+  font-weight: 700;
+}
+
+.photo-source-error-desc {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #b91c1c;
+}
+
 /* Detail photo upload styles */
 .detail-photo-chosen-preview {
   display: flex;
@@ -5154,6 +5221,112 @@ input, select, textarea {
   display: flex;
   gap: 8px;
 }
+
+/* Exit toast banner */
+.exit-toast-banner {
+  position: fixed;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(23, 49, 37, 0.94);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  z-index: 9999;
+  pointer-events: none;
+  animation: toastFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Backup reminder alert & status badges */
+.backup-due-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff8e6;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+}
+
+.backup-due-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.backup-due-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.backup-due-text strong {
+  font-size: 0.92rem;
+  color: #9a3412;
+}
+
+.backup-due-text span {
+  font-size: 0.82rem;
+  color: #7c2d12;
+  line-height: 1.35;
+}
+
+.backup-status-pill-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 14px;
+}
+
+.backup-status-pill {
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.backup-status-pill.pill-ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.backup-status-pill.pill-due {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
+}
+
+.backup-interval-hint {
+  font-size: 0.75rem;
+  color: #8898aa;
+}
+
 
 
 

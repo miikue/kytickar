@@ -75,14 +75,34 @@ function openDb(): Promise<IDBDatabase> {
 
     request.onsuccess = async (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      await seedDbIfNeeded(db);
-      await ensureDemoPhotoFile(db);
-      await ensureTypyAkciDefaults(db);
-      resolve(db);
+
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+
+      try {
+        await seedDbIfNeeded(db);
+        await ensureDemoPhotoFile(db);
+        await ensureTypyAkciDefaults(db);
+        await pruneActivityLogIfNeeded(db);
+        await cleanupOrphanedPhotos(db);
+        resolve(db);
+      } catch (err) {
+        console.error('Chyba při inicializaci/seedování databáze:', err);
+        dbPromise = null;
+        reject(err instanceof Error ? err : new Error('Inicializace databáze selhala.'));
+      }
     };
 
     request.onerror = () => {
-      reject(request.error);
+      dbPromise = null;
+      reject(request.error || new Error('Otevření IndexedDB selhalo.'));
+    };
+
+    request.onblocked = () => {
+      dbPromise = null;
+      reject(new Error('IndexedDB je blokována jiným procesem nebo oknem.'));
     };
   });
 
@@ -193,6 +213,7 @@ async function applyDataToStores(db: IDBDatabase, data: any): Promise<void> {
       await new Promise<void>((resolve, reject) => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error(`Transakce pro ${name} byla přerušena.`));
       });
     }
   }
@@ -276,6 +297,16 @@ export function getDefaultSnoozeDays(name: string): number {
   return 2;
 }
 
+export function isWateringAction(typ?: { typAkce?: string; isWatering?: boolean | null } | null): boolean {
+  if (!typ) return false;
+  if (typeof typ.isWatering === 'boolean') return typ.isWatering;
+  return (typ.typAkce || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .includes('zal');
+}
+
 async function ensureTypyAkciDefaults(db: IDBDatabase): Promise<void> {
   try {
     const list = await getAllFromStore<TypAkce>(db, 'typyAkci');
@@ -294,12 +325,132 @@ async function ensureTypyAkciDefaults(db: IDBDatabase): Promise<void> {
         updated.odlozitDny = getDefaultSnoozeDays(updated.typAkce);
         needsUpdate = true;
       }
+      if (updated.isWatering === undefined || updated.isWatering === null) {
+        updated.isWatering = isWateringAction(updated);
+        needsUpdate = true;
+      }
       if (needsUpdate) {
         await putToStore(db, 'typyAkci', updated);
       }
     }
   } catch (err) {
     console.warn('ensureTypyAkciDefaults warning:', err);
+  }
+}
+
+const MAX_ACTIVITY_LOG_ENTRIES = 300;
+
+async function pruneActivityLogIfNeeded(db: IDBDatabase): Promise<void> {
+  try {
+    const allLogs = await getAllFromStore<ActivityLog>(db, 'activityLog');
+    if (allLogs.length > MAX_ACTIVITY_LOG_ENTRIES) {
+      const toDeleteCount = allLogs.length - MAX_ACTIVITY_LOG_ENTRIES;
+      const oldestLogs = allLogs.slice(0, toDeleteCount);
+      for (const log of oldestLogs) {
+        await deleteFromStore(db, 'activityLog', log.id);
+      }
+    }
+  } catch (err) {
+    console.warn('pruneActivityLogIfNeeded warning:', err);
+  }
+}
+
+async function cleanupOrphanedPhotos(db: IDBDatabase): Promise<void> {
+  try {
+    const [photos, galerie, druhy] = await Promise.all([
+      getAllFromStore<{ fileName: string; dataUrl: string }>(db, 'photos'),
+      getAllFromStore<GalerieFotka>(db, 'galerieFotky'),
+      getAllFromStore<Druh>(db, 'druhy'),
+    ]);
+
+    const usedFileNames = new Set<string>();
+    usedFileNames.add('image.png');
+
+    for (const g of galerie) {
+      if (g.fotkaName) {
+        usedFileNames.add(g.fotkaName);
+        usedFileNames.add(g.fotkaName.replace(/^(\/?species\/|\/?fotky\/)/, ''));
+      }
+    }
+    for (const d of druhy) {
+      if (d.fotka1Name) {
+        usedFileNames.add(d.fotka1Name);
+        usedFileNames.add(d.fotka1Name.replace(/^(\/?species\/|\/?fotky\/)/, ''));
+      }
+      if (d.fotka2Name) {
+        usedFileNames.add(d.fotka2Name);
+        usedFileNames.add(d.fotka2Name.replace(/^(\/?species\/|\/?fotky\/)/, ''));
+      }
+    }
+
+    for (const p of photos) {
+      const clean = p.fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+      if (!usedFileNames.has(p.fileName) && !usedFileNames.has(clean)) {
+        await deleteFromStore(db, 'photos', p.fileName);
+      }
+    }
+  } catch (err) {
+    console.warn('cleanupOrphanedPhotos warning:', err);
+  }
+}
+
+async function deletePhotoIfOrphaned(db: IDBDatabase, fileName: string): Promise<void> {
+  if (!fileName || fileName.startsWith('/') || fileName.startsWith('http') || fileName.startsWith('data:')) {
+    return;
+  }
+  const cleanName = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+
+  const [galerie, druhy] = await Promise.all([
+    getAllFromStore<GalerieFotka>(db, 'galerieFotky'),
+    getAllFromStore<Druh>(db, 'druhy'),
+  ]);
+
+  const usedInGalerie = galerie.some(
+    (g) => g.fotkaName && g.fotkaName.replace(/^(\/?species\/|\/?fotky\/)/, '') === cleanName,
+  );
+  const usedInDruhy = druhy.some(
+    (d) =>
+      (d.fotka1Name && d.fotka1Name.replace(/^(\/?species\/|\/?fotky\/)/, '') === cleanName) ||
+      (d.fotka2Name && d.fotka2Name.replace(/^(\/?species\/|\/?fotky\/)/, '') === cleanName),
+  );
+
+  if (!usedInGalerie && !usedInDruhy) {
+    await deleteFromStore(db, 'photos', cleanName);
+    if (fileName !== cleanName) {
+      await deleteFromStore(db, 'photos', fileName);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kytickar-photo-deleted', { detail: cleanName }));
+      if (fileName !== cleanName) {
+        window.dispatchEvent(new CustomEvent('kytickar-photo-deleted', { detail: fileName }));
+      }
+    }
+  }
+}
+
+function validateBackupData(data: any): void {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Neplatná data zálohy: soubor neobsahuje platný JSON objekt s daty.');
+  }
+
+  const hasKnownStore = ALL_DATA_STORES.some((name) => Array.isArray(data[name]));
+  if (!hasKnownStore) {
+    throw new Error('Neplatný formát zálohy: soubor neobsahuje žádné platné tabulky Kytičkáře (rostliny, druhy apod.).');
+  }
+
+  for (const name of ALL_DATA_STORES) {
+    if (data[name] !== undefined && data[name] !== null && !Array.isArray(data[name])) {
+      throw new Error(`Poškozená data zálohy: oddíl "${name}" musí být seznam (pole).`);
+    }
+  }
+
+  if (Array.isArray(data.rostliny)) {
+    for (let i = 0; i < data.rostliny.length; i++) {
+      const item = data.rostliny[i];
+      if (!item || typeof item !== 'object') {
+        throw new Error(`Poškozená data zálohy: neplatná položka v tabulce rostliny (index ${i}).`);
+      }
+    }
   }
 }
 
@@ -382,15 +533,31 @@ export const localDb = {
   async deleteRostlina(id: number): Promise<null> {
     const db = await openDb();
     await deleteFromStore(db, 'rostliny', id);
-    // Smazeme i asociovane zaznamy
-    const fotky = await getAllFromStore<GalerieFotka>(db, 'galerieFotky');
-    for (const f of fotky.filter(f => f.rostlinaId === id)) {
-      await deleteFromStore(db, 'galerieFotky', f.id);
+
+    // 1. Smazat odložené akce této rostliny
+    const odlozene = await getAllFromStore<any>(db, 'odlozeneAkce');
+    for (const o of odlozene.filter(o => o.rostlinaId === id)) {
+      await deleteFromStore(db, 'odlozeneAkce', o.id);
     }
+
+    // 2. Smazat historii péče této rostliny
     const historie = await getAllFromStore<HistoriePece>(db, 'historiePece');
     for (const h of historie.filter(h => h.rostlinaId === id)) {
       await deleteFromStore(db, 'historiePece', h.id);
     }
+
+    // 3. Smazat fotky z galerie a osiřelá binární data z 'photos'
+    const fotky = await getAllFromStore<GalerieFotka>(db, 'galerieFotky');
+    const plantPhotos = fotky.filter(f => f.rostlinaId === id);
+    for (const f of plantPhotos) {
+      await deleteFromStore(db, 'galerieFotky', f.id);
+    }
+    for (const f of plantPhotos) {
+      if (f.fotkaName) {
+        await deletePhotoIfOrphaned(db, f.fotkaName);
+      }
+    }
+
     notifyCareUpdated();
     return null;
   },
@@ -582,11 +749,16 @@ export const localDb = {
       ? Number(payload.odlozitDny)
       : getDefaultSnoozeDays(name);
 
+    const isWatering = payload.isWatering !== undefined && payload.isWatering !== null
+      ? Boolean(payload.isWatering)
+      : isWateringAction({ typAkce: name });
+
     const id = await addToStore(db, 'typyAkci', {
       typAkce: name,
       ikona,
       intervalDny,
       odlozitDny,
+      isWatering,
     });
     return (await getFromStore<TypAkce>(db, 'typyAkci', id))!;
   },
@@ -605,8 +777,13 @@ export const localDb = {
     const odlozitDny = payload.odlozitDny !== undefined
       ? (payload.odlozitDny !== null && payload.odlozitDny !== '' ? Number(payload.odlozitDny) : null)
       : existing.odlozitDny;
+    const isWatering = payload.isWatering !== undefined && payload.isWatering !== null
+      ? Boolean(payload.isWatering)
+      : (existing.isWatering !== undefined && existing.isWatering !== null)
+      ? existing.isWatering
+      : isWateringAction({ typAkce: name });
 
-    const updated = { ...existing, typAkce: name, ikona, intervalDny, odlozitDny };
+    const updated = { ...existing, typAkce: name, ikona, intervalDny, odlozitDny, isWatering };
     await putToStore(db, 'typyAkci', updated);
     return updated;
   },
@@ -643,7 +820,11 @@ export const localDb = {
 
   async deleteGalerieFotka(id: number): Promise<null> {
     const db = await openDb();
+    const existing = await getFromStore<GalerieFotka>(db, 'galerieFotky', id);
     await deleteFromStore(db, 'galerieFotky', id);
+    if (existing?.fotkaName) {
+      await deletePhotoIfOrphaned(db, existing.fotkaName);
+    }
     return null;
   },
 
@@ -699,7 +880,7 @@ export const localDb = {
     ]);
 
     const wateringTypIds = typyAkci
-      .filter(item => item.typAkce.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('zal'))
+      .filter(item => isWateringAction(item))
       .map(item => item.id);
 
     const now = new Date();
@@ -728,9 +909,12 @@ export const localDb = {
         const d = druhyMap.get(p.druhId);
         const rod = d?.rodId ? rodyMap.get(d.rodId) : null;
         const lastWatering = latestWateringByPlant.get(p.id) || null;
-        const days = lastWatering
-          ? Math.floor((now.getTime() - new Date(lastWatering).getTime()) / (1000 * 60 * 60 * 24))
-          : null;
+        let days: number | null = null;
+        if (lastWatering) {
+          const lastCal = new Date(new Date(lastWatering).getFullYear(), new Date(lastWatering).getMonth(), new Date(lastWatering).getDate());
+          const nowCal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          days = Math.max(0, Math.round((nowCal.getTime() - lastCal.getTime()) / (1000 * 60 * 60 * 24)));
+        }
 
         return {
           id: p.id,
@@ -759,14 +943,14 @@ export const localDb = {
   async odlozitZaliti(rostlinaId: number, dny?: number): Promise<any> {
     const db = await openDb();
     const typyAkci = await getAllFromStore<TypAkce>(db, 'typyAkci');
-    const wateringTyp = typyAkci.find(item =>
-      item.typAkce.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('zal')
-    );
+    const wateringTyp = typyAkci.find(item => item.isWatering) ||
+      typyAkci.find(item => isWateringAction(item));
     if (!wateringTyp) throw new Error('Typ akce pro zalévání nenalezen');
 
     const snoozeDays = dny || wateringTyp.odlozitDny || 2;
     const now = new Date();
-    const datumPripomenuti = new Date(now.getTime() + snoozeDays * 24 * 60 * 60 * 1000).toISOString();
+    const reminderDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + snoozeDays, now.getHours(), now.getMinutes());
+    const datumPripomenuti = reminderDate.toISOString();
 
     const id = await addToStore(db, 'odlozeneAkce', {
       rostlinaId: Number(rostlinaId),
@@ -807,6 +991,7 @@ export const localDb = {
       createdAt: new Date().toISOString(),
     };
     const id = await addToStore(db, 'activityLog', entry);
+    await pruneActivityLogIfNeeded(db);
     return { ...entry, id };
   },
 
@@ -897,6 +1082,8 @@ export const localDb = {
         getAllFromStore(db, 'activityLog'),
       ]);
 
+    const recentActivityLog = activityLog.slice(-100);
+
     return {
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -911,7 +1098,7 @@ export const localDb = {
         galerieFotky,
         historiePece,
         odlozeneAkce,
-        activityLog,
+        activityLog: recentActivityLog,
       },
     };
   },
@@ -923,19 +1110,40 @@ export const localDb = {
         ? payload.data
         : payload;
 
-    // 1. ČISTÝ ŠTÍT: Kompletní vymazání všech 11 úložišť včetně fotografií
-    await clearAllStores(db, true);
+    // 1. Validace schématu PŘED jakýmkoliv mazáním databáze
+    validateBackupData(data);
 
-    // 2. Vložení tabulek ze zálohy
-    await applyDataToStores(db, data);
+    // 2. Bezpečnostní snapshot současných dat pro případ selhání importu
+    const currentSnapshot = await this.exportAllData();
 
-    // 3. Zajištění základního souboru image.png v úložišti photos (pro případné ikony / fallbacky)
-    await ensureDemoPhotoFile(db);
+    try {
+      // 3. Vymazání úložišť
+      await clearAllStores(db, true);
 
-    // 4. Doplnění ikon a intervalů u akcí, pokud ve starší záloze chyběly
-    await ensureTypyAkciDefaults(db);
+      // 4. Vložení tabulek ze zálohy
+      await applyDataToStores(db, data);
 
-    // 5. Vyvolání události pro pročištění paměťových keší
+      // 5. Zajištění základního souboru image.png
+      await ensureDemoPhotoFile(db);
+
+      // 6. Doplnění výchozích hodnot typů akcí
+      await ensureTypyAkciDefaults(db);
+    } catch (insertErr) {
+      console.error('Chyba při vkládání importovaných dat, provádím rollback:', insertErr);
+      try {
+        await clearAllStores(db, true);
+        await applyDataToStores(db, currentSnapshot.data);
+        await ensureDemoPhotoFile(db);
+        await ensureTypyAkciDefaults(db);
+      } catch (rollbackErr) {
+        console.error('Kritická chyba při rollbacku původních dat:', rollbackErr);
+      }
+      throw new Error(
+        `Import se nezdařil: ${insertErr instanceof Error ? insertErr.message : 'Neznámá chyba'}. Původní data byla obnovena.`
+      );
+    }
+
+    // 7. Vyvolání události pro pročištění paměťových keší
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('kytickar-db-reset'));
     }

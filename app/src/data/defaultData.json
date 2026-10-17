@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-10-13T18:36:33.695Z",
+  "exportedAt": "2026-10-17T14:30:00.000Z",
   "appName": "Kytickar",
   "data": {
     "media": [
@@ -111,57 +111,57 @@
       {
         "id": 1,
         "nazev": "Monstera",
-        "popis": ""
+        "popis": "Tropické popínavé liány s děrovanými a laločnatými listy"
       },
       {
         "id": 2,
         "nazev": "Ficus",
-        "popis": ""
+        "popis": "Fíkovníky a pryžovníky různých vzrůstů a velikostí listů"
       },
       {
         "id": 3,
         "nazev": "Peperomia",
-        "popis": ""
+        "popis": "Pepřince, kompaktní rostliny s dužnatými masitými listy"
       },
       {
         "id": 4,
         "nazev": "Philodendron",
-        "popis": ""
+        "popis": "Široký rod aroidů, popínavé i trsovité tropické rostliny"
       },
       {
         "id": 5,
         "nazev": "Alocasia",
-        "popis": ""
+        "popis": "Hlíznaté tropické aroidy s výraznou kresbou a šípovitými listy"
       },
       {
         "id": 6,
         "nazev": "Syngonium",
-        "popis": ""
+        "popis": "Popínavé rostliny se šípovitými pestrými listy"
       },
       {
         "id": 7,
         "nazev": "Epipremnum",
-        "popis": ""
+        "popis": "Nenáročné popínavé i převislé liány (Pothos)"
       },
       {
         "id": 8,
         "nazev": "Sansevieria",
-        "popis": ""
+        "popis": "Tchýnin jazyk, extrémně odolné sukulenty vhodné i do polostínu"
       },
       {
         "id": 9,
         "nazev": "Calathea",
-        "popis": ""
+        "popis": "Modlivky s dekorativními pestrými vzory listů"
       },
       {
         "id": 10,
         "nazev": "Anthurium",
-        "popis": ""
+        "popis": "Toulitky, ozdobné voskovými květy nebo sametovými listy"
       },
       {
         "id": 11,
         "nazev": "Hoya",
-        "popis": ""
+        "popis": "Voskovky, popínavé liány s masitými listy a vonnými květy"
       },
       {
         "id": 12,
@@ -171,7 +171,7 @@
       {
         "id": 13,
         "nazev": "Scindapsus",
-        "popis": ""
+        "popis": "Popínavé liány se stříbřitě panašovanými sametovými listy"
       },
       {
         "id": 14,
@@ -186,12 +186,12 @@
       {
         "id": 16,
         "nazev": "Crassula",
-        "popis": ""
+        "popis": "Tlustice, sukulentní keříky a stromečky štěstí"
       },
       {
         "id": 17,
         "nazev": "Ceropegia",
-        "popis": ""
+        "popis": "Svícník, jemná převislá sukulentní liána se srdčitými lístky"
       },
       {
         "id": 18,
@@ -206,7 +206,7 @@
       {
         "id": 20,
         "nazev": "Zamioculcas",
-        "popis": ""
+        "popis": "Zamiokulkas, nezničitelná odolná rostlina s voskovými listy"
       },
       {
         "id": 21,
@@ -216,7 +216,7 @@
       {
         "id": 22,
         "nazev": "Dracaena",
-        "popis": ""
+        "popis": "Dračince, palmovitý vzrůst s růžicemi úzkých listů"
       },
       {
         "id": 23,
@@ -256,7 +256,7 @@
       {
         "id": 30,
         "nazev": "Aloe",
-        "popis": ""
+        "popis": "Sukulenty se zdužnatělými léčivými listy s ostnitým okrajem"
       },
       {
         "id": 31,
@@ -296,16 +296,11 @@
       {
         "id": 38,
         "nazev": "Tradescantia",
-        "popis": ""
+        "popis": "Voděnka / poděnka, rychle rostoucí převislá barevná liána"
       },
       {
         "id": 39,
         "nazev": "Ananas",
-        "popis": ""
-      },
-      {
-        "id": 40,
-        "nazev": "euphorbia",
         "popis": ""
       },
       {
@@ -317,6 +312,36 @@
         "id": 42,
         "nazev": "Fragaria",
         "popis": ""
+      },
+      {
+        "id": 43,
+        "nazev": "Spathiphyllum",
+        "popis": "Lopatkovec, čistí vzduch a kvete elegantními bílými toulci"
+      },
+      {
+        "id": 44,
+        "nazev": "Pilea",
+        "popis": "Nenáročné pokojovky (např. palačinkovka / Pilea peperomioides)"
+      },
+      {
+        "id": 45,
+        "nazev": "Chlorophytum",
+        "popis": "Zelenec, odolná rostlina s převislými odnožemi"
+      },
+      {
+        "id": 46,
+        "nazev": "Begonia",
+        "popis": "Begonie, pestrobarevné strukturované a puntíkaté listy"
+      },
+      {
+        "id": 47,
+        "nazev": "Maranta",
+        "popis": "Modlivky s barevným žilkováním na sametových listech"
+      },
+      {
+        "id": 48,
+        "nazev": "Dieffenbachia",
+        "popis": "Bujně rostoucí pokojovka s mramorovanými světlými listy"
       }
     ],
     "druhy": [
@@ -370,18 +395,18 @@
       },
       {
         "id": 7,
-        "nazev": "phalaenopsis",
-        "popis": "",
+        "nazev": "Phalaenopsis (Můrovec)",
+        "popis": "Nejrozšířenější pokojová orchidej kvetoucí pestrými květy po dlouhé měsíce.",
         "rodId": 12,
         "fotka1Name": "phalaenopsis.jpg",
         "fotka2Name": null
       },
       {
         "id": 8,
-        "nazev": "pictus Trebie",
-        "popis": "",
+        "nazev": "Scindapsus pictus 'Argyraeus'",
+        "popis": "Stříbřitě kropenatá šplhavnice se srdčitými listy.",
         "rodId": 13,
-        "fotka1Name": null,
+        "fotka1Name": "scindapsus_pictus.jpg",
         "fotka2Name": null
       },
       {
@@ -389,7 +414,7 @@
         "nazev": "Rubin Star",
         "popis": "",
         "rodId": 14,
-        "fotka1Name": null,
+        "fotka1Name": "cryptanthus_rubin_star.jpg",
         "fotka2Name": null
       },
       {
@@ -397,7 +422,7 @@
         "nazev": "Sunrise",
         "popis": "",
         "rodId": 15,
-        "fotka1Name": null,
+        "fotka1Name": "anacampseros_sunrise.jpg",
         "fotka2Name": null
       },
       {
@@ -405,15 +430,15 @@
         "nazev": "unknown",
         "popis": "",
         "rodId": 6,
-        "fotka1Name": null,
+        "fotka1Name": "syngonium_podophyllum_sp.jpg",
         "fotka2Name": null
       },
       {
         "id": 12,
-        "nazev": "Ovata",
-        "popis": "",
+        "nazev": "Crassula ovata (Tlustice)",
+        "popis": "Nenáročný sukulentní keř se silnými dužnatými listy a dřevnatějícím stonkem.",
         "rodId": 16,
-        "fotka1Name": null,
+        "fotka1Name": "crassula_ovata.jpg",
         "fotka2Name": null
       },
       {
@@ -421,15 +446,15 @@
         "nazev": "Minima",
         "popis": "",
         "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "rhaphidophora_tetrasperma.jpg",
         "fotka2Name": null
       },
       {
         "id": 14,
-        "nazev": "Wooddii",
-        "popis": "",
+        "nazev": "Ceropegia woodii (Svícník)",
+        "popis": "Převislý sukulent s jemnými srdčitými listy a korálkovitými hlízami.",
         "rodId": 17,
-        "fotka1Name": null,
+        "fotka1Name": "ceropegia_woodii.jpg",
         "fotka2Name": null
       },
       {
@@ -437,7 +462,7 @@
         "nazev": "Erubescens",
         "popis": "",
         "rodId": 4,
-        "fotka1Name": null,
+        "fotka1Name": "philodendron_erubescens.jpg",
         "fotka2Name": null
       },
       {
@@ -445,7 +470,7 @@
         "nazev": "Loriformis Bright Star",
         "popis": "",
         "rodId": 18,
-        "fotka1Name": null,
+        "fotka1Name": "murdannia_loriformis.jpg",
         "fotka2Name": null
       },
       {
@@ -453,15 +478,15 @@
         "nazev": "Unknown",
         "popis": "",
         "rodId": 19,
-        "fotka1Name": null,
+        "fotka1Name": "aglaonema_commutatum.jpg",
         "fotka2Name": null
       },
       {
         "id": 18,
-        "nazev": "Zamiifolia",
-        "popis": "",
+        "nazev": "Zamioculcas zamiifolia (Zamiokulkas)",
+        "popis": "Mimořádně odolná rostlina s lesklými tmavě zelenými zpeřenými listy.",
         "rodId": 20,
-        "fotka1Name": null,
+        "fotka1Name": "zamioculcas_zamiifolia.jpg",
         "fotka2Name": null
       },
       {
@@ -469,23 +494,15 @@
         "nazev": "Unknownn",
         "popis": "",
         "rodId": 21,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 20,
-        "nazev": "trifasciata",
-        "popis": "",
-        "rodId": 22,
-        "fotka1Name": null,
+        "fotka1Name": "rhipsalis_cereuscula.jpg",
         "fotka2Name": null
       },
       {
         "id": 21,
-        "nazev": "Treubi Moonlight",
-        "popis": "",
+        "nazev": "Scindapsus treubii 'Moonlight'",
+        "popis": "Krásný šplhavec se sametově matnými stříbřitě šedými listy.",
         "rodId": 13,
-        "fotka1Name": null,
+        "fotka1Name": "scindapsus_treubii.jpg",
         "fotka2Name": null
       },
       {
@@ -493,7 +510,7 @@
         "nazev": "Green splash",
         "popis": "",
         "rodId": 6,
-        "fotka1Name": null,
+        "fotka1Name": "syngonium_green_splash.jpg",
         "fotka2Name": null
       },
       {
@@ -501,7 +518,7 @@
         "nazev": "Batik?",
         "popis": "",
         "rodId": 6,
-        "fotka1Name": null,
+        "fotka1Name": "syngonium_batik.jpg",
         "fotka2Name": null
       },
       {
@@ -509,7 +526,7 @@
         "nazev": "pulcherrima",
         "popis": "",
         "rodId": 23,
-        "fotka1Name": null,
+        "fotka1Name": "euphorbia_pulcherrima.jpg",
         "fotka2Name": null
       },
       {
@@ -517,7 +534,7 @@
         "nazev": "unknownn",
         "popis": "",
         "rodId": 24,
-        "fotka1Name": null,
+        "fotka1Name": "hibiscus_rosa_sinensis.jpg",
         "fotka2Name": null
       },
       {
@@ -525,15 +542,15 @@
         "nazev": "Nevim",
         "popis": "",
         "rodId": 25,
-        "fotka1Name": null,
+        "fotka1Name": "schefflera_arboricola.jpg",
         "fotka2Name": null
       },
       {
         "id": 27,
-        "nazev": "Marble queen",
-        "popis": "",
+        "nazev": "Epipremnum 'Marble Queen'",
+        "popis": "Panašovaný kultivar šplhavnice s krémově bílým a zeleným mramorováním.",
         "rodId": 7,
-        "fotka1Name": null,
+        "fotka1Name": "epipremnum_marble_queen.jpg",
         "fotka2Name": null
       },
       {
@@ -541,7 +558,7 @@
         "nazev": "Obliqua",
         "popis": "",
         "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "monstera_obliqua.jpg",
         "fotka2Name": null
       },
       {
@@ -549,7 +566,7 @@
         "nazev": "Thai constellation",
         "popis": "",
         "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "monstera_thai_constellation.jpg",
         "fotka2Name": null
       },
       {
@@ -557,7 +574,7 @@
         "nazev": "Burle Marx Flame",
         "popis": "",
         "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "monstera_burle_marx_flame.jpg",
         "fotka2Name": null
       },
       {
@@ -565,7 +582,7 @@
         "nazev": "White Princess",
         "popis": "",
         "rodId": 4,
-        "fotka1Name": null,
+        "fotka1Name": "philodendron_white_princess.jpg",
         "fotka2Name": null
       },
       {
@@ -573,7 +590,7 @@
         "nazev": "Graveolens",
         "popis": "",
         "rodId": 3,
-        "fotka1Name": null,
+        "fotka1Name": "peperomia_graveolens.jpg",
         "fotka2Name": null
       },
       {
@@ -581,7 +598,7 @@
         "nazev": "Sanderiana",
         "popis": "",
         "rodId": 22,
-        "fotka1Name": null,
+        "fotka1Name": "dracaena_sanderiana.jpg",
         "fotka2Name": null
       },
       {
@@ -589,7 +606,7 @@
         "nazev": "Sativum",
         "popis": "",
         "rodId": 26,
-        "fotka1Name": null,
+        "fotka1Name": "allium_sativum.jpg",
         "fotka2Name": null
       },
       {
@@ -597,7 +614,7 @@
         "nazev": "Nevimm",
         "popis": "",
         "rodId": 27,
-        "fotka1Name": null,
+        "fotka1Name": "houseplant_mix.jpg",
         "fotka2Name": null
       },
       {
@@ -605,7 +622,7 @@
         "nazev": "Mottled",
         "popis": "",
         "rodId": 6,
-        "fotka1Name": null,
+        "fotka1Name": "syngonium_mottled.jpg",
         "fotka2Name": null
       },
       {
@@ -613,7 +630,7 @@
         "nazev": "limifolia",
         "popis": "",
         "rodId": 28,
-        "fotka1Name": null,
+        "fotka1Name": "haworthiopsis_limifolia.jpg",
         "fotka2Name": null
       },
       {
@@ -621,7 +638,7 @@
         "nazev": "histrix",
         "popis": "",
         "rodId": 29,
-        "fotka1Name": null,
+        "fotka1Name": "ferocactus_histrix.jpg",
         "fotka2Name": null
       },
       {
@@ -629,15 +646,15 @@
         "nazev": "Nobilis",
         "popis": "",
         "rodId": 30,
-        "fotka1Name": null,
+        "fotka1Name": "aloe_nobilis.jpg",
         "fotka2Name": null
       },
       {
         "id": 40,
-        "nazev": "Zebrina",
-        "popis": "",
+        "nazev": "Alocasia zebrina",
+        "popis": "Exotická alokázie s nápadně pruhovanými zebrovanými řapíky.",
         "rodId": 5,
-        "fotka1Name": null,
+        "fotka1Name": "alocasia_zebrina.jpg",
         "fotka2Name": null
       },
       {
@@ -645,7 +662,7 @@
         "nazev": "Nevimmm",
         "popis": "",
         "rodId": 31,
-        "fotka1Name": null,
+        "fotka1Name": "haworthia_cooperi.jpg",
         "fotka2Name": null
       },
       {
@@ -653,7 +670,7 @@
         "nazev": "Obesum",
         "popis": "",
         "rodId": 32,
-        "fotka1Name": null,
+        "fotka1Name": "adenium_obesum.jpg",
         "fotka2Name": null
       },
       {
@@ -661,7 +678,7 @@
         "nazev": "Schlumbergera",
         "popis": "",
         "rodId": 33,
-        "fotka1Name": null,
+        "fotka1Name": "schlumbergera_truncata.jpg",
         "fotka2Name": null
       },
       {
@@ -669,7 +686,7 @@
         "nazev": "Sunset",
         "popis": "",
         "rodId": 30,
-        "fotka1Name": null,
+        "fotka1Name": "aloe_sunset.jpg",
         "fotka2Name": null
       },
       {
@@ -677,7 +694,7 @@
         "nazev": "Wippermannii",
         "popis": "",
         "rodId": 34,
-        "fotka1Name": null,
+        "fotka1Name": "stenocactus_wippermannii.jpg",
         "fotka2Name": null
       },
       {
@@ -685,7 +702,7 @@
         "nazev": "cinnabarina",
         "popis": "",
         "rodId": 35,
-        "fotka1Name": null,
+        "fotka1Name": "lobivia_cinnabarina.jpg",
         "fotka2Name": null
       },
       {
@@ -693,7 +710,7 @@
         "nazev": "Mix",
         "popis": "",
         "rodId": 33,
-        "fotka1Name": null,
+        "fotka1Name": "cactus_mix.jpg",
         "fotka2Name": null
       },
       {
@@ -701,7 +718,7 @@
         "nazev": "pachycladus",
         "popis": "",
         "rodId": 36,
-        "fotka1Name": null,
+        "fotka1Name": "pilosocereus_pachycladus.jpg",
         "fotka2Name": null
       },
       {
@@ -709,7 +726,7 @@
         "nazev": "Deliciosa albo",
         "popis": "",
         "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "monstera_deliciosa_albo.jpg",
         "fotka2Name": null
       },
       {
@@ -717,7 +734,7 @@
         "nazev": "spinosissima",
         "popis": "",
         "rodId": 37,
-        "fotka1Name": null,
+        "fotka1Name": "mammillaria_spinosissima.jpg",
         "fotka2Name": null
       },
       {
@@ -725,15 +742,15 @@
         "nazev": "Jacklyn",
         "popis": "",
         "rodId": 5,
-        "fotka1Name": null,
+        "fotka1Name": "alocasia_tandurusa.jpg",
         "fotka2Name": null
       },
       {
         "id": 52,
-        "nazev": "Polly",
-        "popis": "",
+        "nazev": "Alocasia amazonica 'Polly'",
+        "popis": "Kompaktní alokázie s tmavě zelenými listy s výrazným stříbřitě bílým žilkováním.",
         "rodId": 5,
-        "fotka1Name": null,
+        "fotka1Name": "alocasia_amazonica_polly.jpg",
         "fotka2Name": null
       },
       {
@@ -741,15 +758,7 @@
         "nazev": "Broomii",
         "popis": "",
         "rodId": 30,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 54,
-        "nazev": "Heartleaf",
-        "popis": "",
-        "rodId": 4,
-        "fotka1Name": null,
+        "fotka1Name": "aloe_broomii.jpg",
         "fotka2Name": null
       },
       {
@@ -757,15 +766,15 @@
         "nazev": "baccifera",
         "popis": "",
         "rodId": 21,
-        "fotka1Name": null,
+        "fotka1Name": "rhipsalis_baccifera_sp.jpg",
         "fotka2Name": null
       },
       {
         "id": 56,
-        "nazev": "Benjamina",
-        "popis": "",
+        "nazev": "Ficus benjamina (Drobnolistý)",
+        "popis": "Oblíbený drobnolistý pokojový fíkus s převislými větvičkami.",
         "rodId": 2,
-        "fotka1Name": null,
+        "fotka1Name": "ficus_benjamina.jpg",
         "fotka2Name": null
       },
       {
@@ -773,7 +782,7 @@
         "nazev": "elliptica",
         "popis": "",
         "rodId": 21,
-        "fotka1Name": null,
+        "fotka1Name": "rhipsalis_elliptica.jpg",
         "fotka2Name": null
       },
       {
@@ -781,47 +790,23 @@
         "nazev": "Idkk",
         "popis": "",
         "rodId": 38,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 59,
-        "nazev": "Adansonii",
-        "popis": "",
-        "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "tradescantia_pallida.jpg",
         "fotka2Name": null
       },
       {
         "id": 60,
-        "nazev": "Comosus",
-        "popis": "",
+        "nazev": "Ananas comosus",
+        "popis": "Ananasovník chocholatý, tropická rostlina s dekorativní růžicí listů a plody.",
         "rodId": 39,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 61,
-        "nazev": "comosus",
-        "popis": "",
-        "rodId": 39,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 62,
-        "nazev": "Deliciosa",
-        "popis": "",
-        "rodId": 1,
-        "fotka1Name": null,
+        "fotka1Name": "ananas_comosus.jpg",
         "fotka2Name": null
       },
       {
         "id": 63,
         "nazev": "umbellata",
         "popis": "",
-        "rodId": 40,
-        "fotka1Name": null,
+        "rodId": 23,
+        "fotka1Name": "euphorbia_umbellata.jpg",
         "fotka2Name": null
       },
       {
@@ -829,7 +814,7 @@
         "nazev": "nevím",
         "popis": "",
         "rodId": 11,
-        "fotka1Name": null,
+        "fotka1Name": "hoya_pubicalyx.jpg",
         "fotka2Name": null
       },
       {
@@ -837,7 +822,7 @@
         "nazev": "Oncidium",
         "popis": "",
         "rodId": 12,
-        "fotka1Name": null,
+        "fotka1Name": "oncidium_orchid.jpg",
         "fotka2Name": null
       },
       {
@@ -845,15 +830,7 @@
         "nazev": "Idk",
         "popis": "",
         "rodId": 41,
-        "fotka1Name": null,
-        "fotka2Name": null
-      },
-      {
-        "id": 67,
-        "nazev": "elastica",
-        "popis": "",
-        "rodId": 2,
-        "fotka1Name": null,
+        "fotka1Name": "gasteria_carinata.jpg",
         "fotka2Name": null
       },
       {
@@ -861,7 +838,7 @@
         "nazev": "Vesca",
         "popis": "",
         "rodId": 42,
-        "fotka1Name": null,
+        "fotka1Name": "fragaria_vesca.jpg",
         "fotka2Name": null
       },
       {
@@ -869,7 +846,287 @@
         "nazev": "Lady Valentine",
         "popis": "",
         "rodId": 19,
-        "fotka1Name": null,
+        "fotka1Name": "aglaonema_lady_valentine.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 70,
+        "nazev": "Monstera standleyana",
+        "popis": "Popínavá monstera s podlouhlými kopinatými listy a bílým či žlutým kropením.",
+        "rodId": 1,
+        "fotka1Name": "monstera_standleyana.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 71,
+        "nazev": "Philodendron Birkin",
+        "popis": "Kompaktní trsovitý filodendron s jemným bílým pruhováním na tmavě zelených listech.",
+        "rodId": 4,
+        "fotka1Name": "philodendron_birkin.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 72,
+        "nazev": "Philodendron Pink Princess",
+        "popis": "Sběratelský filodendron s tmavými černo-zelenými listy a jasně růžovým panašováním.",
+        "rodId": 4,
+        "fotka1Name": "philodendron_pink_princess.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 73,
+        "nazev": "Philodendron Brasil",
+        "popis": "Popínavý filodendron s limetkově zeleným a žlutým pruhem uprostřed srdčitého listu.",
+        "rodId": 4,
+        "fotka1Name": "philodendron_brasil.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 74,
+        "nazev": "Philodendron verrucosum",
+        "popis": "Sametové tmavé listy s jemně chlupatými řapíky a světle zeleným žilkováním.",
+        "rodId": 4,
+        "fotka1Name": "philodendron_verrucosum.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 75,
+        "nazev": "Epipremnum pinnatum 'Cebu Blue'",
+        "popis": "Nádherné protáhlé listy se stříbřitě modravým kovovým leskem.",
+        "rodId": 7,
+        "fotka1Name": "epipremnum_cebu_blue.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 76,
+        "nazev": "Ficus lyrata (Lyrovitý)",
+        "popis": "Populární solitérní fíkus s obřími zvlněnými listy ve tvaru houslí.",
+        "rodId": 2,
+        "fotka1Name": "ficus_lyrata.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 77,
+        "nazev": "Alocasia baginda 'Dragon Scale'",
+        "popis": "Plasticky texturované listy připomínající dračí šupiny s tmavě zeleným žilkováním.",
+        "rodId": 5,
+        "fotka1Name": "alocasia_dragon_scale.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 78,
+        "nazev": "Alocasia macrorrhizos",
+        "popis": "Obří sloní ucho – mohutné světle zelené listy pro prostorné interiéry.",
+        "rodId": 5,
+        "fotka1Name": "alocasia_macrorrhizos.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 79,
+        "nazev": "Calathea orbifolia",
+        "popis": "Velké okrouhlé listy s elegantními stříbřitě zelenými pruhy.",
+        "rodId": 9,
+        "fotka1Name": "calathea_orbifolia.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 80,
+        "nazev": "Calathea makoyana (Páví)",
+        "popis": "Jemná kresba na listech připomínající paví peří s fialovým rubem listu.",
+        "rodId": 9,
+        "fotka1Name": "calathea_makoyana.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 81,
+        "nazev": "Calathea medallion (Roseopicta)",
+        "popis": "Kulaté listy s pestrou kresbou v tónech zelené, růžové a fialové.",
+        "rodId": 9,
+        "fotka1Name": "calathea_medallion.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 82,
+        "nazev": "Sansevieria cylindrica",
+        "popis": "Architektonické válcovité tuhé listy, snese značné sucho i méně světla.",
+        "rodId": 8,
+        "fotka1Name": "sansevieria_cylindrica.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 83,
+        "nazev": "Sansevieria 'Laurentii'",
+        "popis": "Tchýnin jazyk se zářivě žlutými podélnými lemy listů.",
+        "rodId": 8,
+        "fotka1Name": "sansevieria_laurentii.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 84,
+        "nazev": "Zamioculcas 'Raven' (Černý)",
+        "popis": "Sběratelská varieta, jejíž mladé zelené listy dozrávají do sytě černé barvy.",
+        "rodId": 20,
+        "fotka1Name": "zamioculcas_raven.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 85,
+        "nazev": "Spathiphyllum wallisii (Lopatkovec)",
+        "popis": "Vděčná kvetoucí rostlina čistící ovzduší, při žízni dá vědět svěšením listů.",
+        "rodId": 43,
+        "fotka1Name": "spathiphyllum_wallisii.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 86,
+        "nazev": "Anthurium clarinervium",
+        "popis": "Sametové srdčité listy s výraznou bílou žilnatinou, pěstované pro dekorativní listy.",
+        "rodId": 10,
+        "fotka1Name": "anthurium_clarinervium.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 87,
+        "nazev": "Anthurium andraeanum (Kvetoucí)",
+        "popis": "Klasická toulitka s voskovými pestrými toulci v červené, růžové či bílé barvě.",
+        "rodId": 10,
+        "fotka1Name": "anthurium_andraeanum.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 88,
+        "nazev": "Anthurium crystallinum",
+        "popis": "Krystalicky zářivé žilkování na velkých sametových srdčitých listech.",
+        "rodId": 10,
+        "fotka1Name": "anthurium_crystallinum.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 89,
+        "nazev": "Peperomia watermelon (argyreia)",
+        "popis": "Pepřinec melounový s listy napodobujícími pruhovanou kůru melounu.",
+        "rodId": 3,
+        "fotka1Name": "peperomia_watermelon.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 90,
+        "nazev": "Peperomia obtusifolia",
+        "popis": "Hustý keřík s masitými kulatými listy, velmi nenáročný na pěstování.",
+        "rodId": 3,
+        "fotka1Name": "peperomia_obtusifolia.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 91,
+        "nazev": "Peperomia rotundifolia",
+        "popis": "Drobnolistý převislý pepřinec tvořící hustý zelený vodopád.",
+        "rodId": 3,
+        "fotka1Name": "peperomia_rotundifolia.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 92,
+        "nazev": "Syngonium podophyllum",
+        "popis": "Oblíbená šípovitá rostlina, skvělá k opoře i do závěsného květináče.",
+        "rodId": 6,
+        "fotka1Name": "syngonium_podophyllum.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 93,
+        "nazev": "Syngonium neon robusta (Růžové)",
+        "popis": "Syngonium s jemně růžovými až meruňkovými šípovitými listy.",
+        "rodId": 6,
+        "fotka1Name": "syngonium_neon_robusta.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 94,
+        "nazev": "Pilea peperomioides (Palačinkovka)",
+        "popis": "Kulaté ploché listy na dlouhých řapících, ochotně tvoří dceřiné rostlinky.",
+        "rodId": 44,
+        "fotka1Name": "pilea_peperomioides.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 95,
+        "nazev": "Chlorophytum comosum (Zelenec)",
+        "popis": "Nenáročná tráva s bílým pruhem, vytváří bohaté převislé šlahouny s odnožemi.",
+        "rodId": 45,
+        "fotka1Name": "chlorophytum_comosum.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 96,
+        "nazev": "Dracaena marginata (Dračinec)",
+        "popis": "Štíhlý kmínek zakončený růžicí úzkých zelených listů s vínovým lemováním.",
+        "rodId": 22,
+        "fotka1Name": "dracaena_marginata.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 97,
+        "nazev": "Dracaena fragrans",
+        "popis": "Dračinec vonný se širokými klenutými listy a žlutým středovým pruhem.",
+        "rodId": 22,
+        "fotka1Name": "dracaena_fragrans.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 98,
+        "nazev": "Begonia maculata (Skvrnitá)",
+        "popis": "Andělská křídla – protáhlé listy poseté stříbrnými puntíky s rubínovým rubem.",
+        "rodId": 46,
+        "fotka1Name": "begonia_maculata.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 99,
+        "nazev": "Hoya carnosa (Voskovka masitá)",
+        "popis": "Dlouhověká popínavka s masitými listy a voňavými porcelánovými květenstvími.",
+        "rodId": 11,
+        "fotka1Name": "hoya_carnosa.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 100,
+        "nazev": "Hoya kerrii (Srdíčková)",
+        "popis": "Voskovka s masitými listy ve tvaru dokonalého srdce.",
+        "rodId": 11,
+        "fotka1Name": "hoya_kerrii.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 101,
+        "nazev": "Maranta leuconeura 'Fascinator'",
+        "popis": "Fascinující rybí kostra – červené žilkování na sametově zelených listech.",
+        "rodId": 47,
+        "fotka1Name": "maranta_fascinator.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 102,
+        "nazev": "Aloe vera (Léčivá)",
+        "popis": "Známý sukulent se zdužnatělými ostnitými listy plnými hojivého gelu.",
+        "rodId": 30,
+        "fotka1Name": "aloe_vera.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 103,
+        "nazev": "Tradescantia zebrina (Poděnka)",
+        "popis": "Rychle rostoucí převislá rostlina se stříbřitě fialovým pruhováním na listech.",
+        "rodId": 38,
+        "fotka1Name": "tradescantia_zebrina.jpg",
+        "fotka2Name": null
+      },
+      {
+        "id": 104,
+        "nazev": "Dieffenbachia seguine",
+        "popis": "Klasická pokojovka s velkými mramorovanými listy se žlutobílým středem.",
+        "rodId": 48,
+        "fotka1Name": "dieffenbachia_seguine.jpg",
         "fotka2Name": null
       }
     ],
@@ -1007,7 +1264,7 @@
         "datumPorizeni": "2026-04-07T11:23:23.980Z",
         "mediumId": 2,
         "umisteniId": null,
-        "druhId": 20
+        "druhId": 6
       },
       {
         "id": 22,
@@ -1394,7 +1651,7 @@
         "datumPorizeni": "2026-04-15T13:20:48.291Z",
         "mediumId": 2,
         "umisteniId": 10,
-        "druhId": 54
+        "druhId": 4
       },
       {
         "id": 65,
@@ -1448,7 +1705,7 @@
         "datumPorizeni": "2026-04-18T12:19:47.093Z",
         "mediumId": 2,
         "umisteniId": 11,
-        "druhId": 20
+        "druhId": 6
       },
       {
         "id": 71,
@@ -1493,7 +1750,7 @@
         "datumPorizeni": "2026-04-18T14:46:36.368Z",
         "mediumId": 2,
         "umisteniId": 11,
-        "druhId": 59
+        "druhId": 2
       },
       {
         "id": 76,
@@ -1511,7 +1768,7 @@
         "datumPorizeni": "2026-04-18T14:49:47.166Z",
         "mediumId": 2,
         "umisteniId": 11,
-        "druhId": 61
+        "druhId": 60
       },
       {
         "id": 78,
@@ -1529,7 +1786,7 @@
         "datumPorizeni": "2026-04-18T14:52:57.663Z",
         "mediumId": 2,
         "umisteniId": 12,
-        "druhId": 62
+        "druhId": 1
       },
       {
         "id": 80,
@@ -1547,7 +1804,7 @@
         "datumPorizeni": "2026-04-18T16:24:32.471Z",
         "mediumId": 2,
         "umisteniId": 13,
-        "druhId": 61
+        "druhId": 60
       },
       {
         "id": 82,
@@ -1601,7 +1858,7 @@
         "datumPorizeni": "2026-04-18T17:29:20.624Z",
         "mediumId": 1,
         "umisteniId": 13,
-        "druhId": 67
+        "druhId": 3
       },
       {
         "id": 88,
@@ -1637,63 +1894,72 @@
         "typAkce": "Zalévání",
         "ikona": "💧",
         "intervalDny": 7,
-        "odlozitDny": 2
+        "odlozitDny": 2,
+        "isWatering": true
       },
       {
         "id": 2,
         "typAkce": "Hnojení",
         "ikona": "🌱",
         "intervalDny": 14,
-        "odlozitDny": 3
+        "odlozitDny": 3,
+        "isWatering": false
       },
       {
         "id": 3,
         "typAkce": "Přesazování",
         "ikona": "🪴",
         "intervalDny": 365,
-        "odlozitDny": 14
+        "odlozitDny": 14,
+        "isWatering": false
       },
       {
         "id": 4,
         "typAkce": "Rosení",
         "ikona": "💨",
         "intervalDny": 2,
-        "odlozitDny": 1
+        "odlozitDny": 1,
+        "isWatering": false
       },
       {
         "id": 5,
         "typAkce": "Kontrola škůdců",
         "ikona": "🔍",
         "intervalDny": 14,
-        "odlozitDny": 3
+        "odlozitDny": 3,
+        "isWatering": false
       },
       {
         "id": 6,
         "typAkce": "Otírání prachu",
         "ikona": "🧽",
         "intervalDny": 21,
-        "odlozitDny": 5
+        "odlozitDny": 5,
+        "isWatering": false
       },
       {
         "id": 7,
         "typAkce": "Stříhání",
         "ikona": "✂️",
         "intervalDny": 60,
-        "odlozitDny": 7
+        "odlozitDny": 7,
+        "isWatering": false
       },
       {
         "id": 8,
         "typAkce": "Výměna vody",
         "ikona": "🌊",
         "intervalDny": 7,
-        "odlozitDny": 2
+        "odlozitDny": 2,
+        "isWatering": false
       },
       {
         "id": 9,
         "typAkce": "Ošetření proti škůdcům",
         "ikona": "🧪",
         "intervalDny": 14,
-        "odlozitDny": 3
+        "odlozitDny": 3,
+        "isWatering": false
       }
     ],
     "historiePece": [

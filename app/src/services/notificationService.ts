@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { localDb } from './localDb';
+import { localDb, isWateringAction } from './localDb';
+import { backupService } from './backupService';
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -10,6 +11,8 @@ export interface NotificationSettings {
 
 const SETTINGS_STORAGE_KEY = 'kytickar_notification_settings';
 const CARE_CHANNEL_ID = 'kytickar-care';
+const BACKUP_CHANNEL_ID = 'kytickar-backup';
+const BACKUP_NOTIFICATION_ID = 8888;
 
 const DEFAULT_SETTINGS: NotificationSettings = {
   enabled: false,
@@ -97,6 +100,15 @@ export const notificationService = {
         name: 'Péče o kytičky',
         description: 'Upozornění na zálivku, hnojení a další péči',
         importance: 4, // High importance (zvuk + banner)
+        vibration: true,
+        visibility: 1,
+      });
+
+      await LocalNotifications.createChannel({
+        id: BACKUP_CHANNEL_ID,
+        name: 'Připomínka zálohování',
+        description: 'Upozornění na pravidelnou dvouměsíční zálohu rostlin a fotografií',
+        importance: 3, // Default importance
         vibration: true,
         visibility: 1,
       });
@@ -188,6 +200,7 @@ export const notificationService = {
       plantName: string;
       actionName: string;
       actionIcon: string;
+      isWatering: boolean;
       dueDate: Date;
     };
 
@@ -216,36 +229,43 @@ export const notificationService = {
         if (activeSnooze) {
           dueDate = new Date(activeSnooze.datumPripomenuti);
         } else {
-          dueDate = new Date(lastDate.getTime() + intervalDny * 24 * 60 * 60 * 1000);
+          // Kalendářní přičtení dnů
+          dueDate = new Date(
+            lastDate.getFullYear(),
+            lastDate.getMonth(),
+            lastDate.getDate() + intervalDny,
+            lastDate.getHours(),
+            lastDate.getMinutes()
+          );
         }
 
         dueTasks.push({
           plantName: plant.vlastniJmeno,
           actionName: typ.typAkce,
           actionIcon: typ.ikona || '🌱',
+          isWatering: isWateringAction(typ),
           dueDate,
         });
       }
     }
 
-    // 6. Seskupení úkolů do příštích 14 dnů (den 0 = dnes, den 1 = zítra, ...)
+    // 6. Seskupení úkolů do příštích 14 kalendářních dnů (den 0 = dnes, den 1 = zítra, ...)
     const notificationsToSchedule: any[] = [];
     let firstReminderDate: string | null = null;
 
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
     for (let dayOffset = 0; dayOffset <= 14; dayOffset++) {
-      const targetDay = new Date(startOfToday.getTime() + dayOffset * 24 * 60 * 60 * 1000);
-      const targetDayStart = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate(), 0, 0, 0);
-      const targetDayEnd = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate(), 23, 59, 59);
+      // Kalendářní výpočet hranic dne nezávislý na posunech letního a zimního času (DST)
+      const targetDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 0, 0, 0, 0);
+      const targetDayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 23, 59, 59, 999);
 
-      // Přesný čas odeslání notifikace v daný den
+      // Přesný čas odeslání notifikace v daný den (např. 09:00 ráno v místním čase daného dne)
       const scheduledDateTime = new Date(
-        targetDay.getFullYear(),
-        targetDay.getMonth(),
-        targetDay.getDate(),
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + dayOffset,
         reminderHours,
         reminderMinutes,
+        0,
         0
       );
 
@@ -274,7 +294,7 @@ export const notificationService = {
           const summary = tasksForDay.map((t) => `${t.plantName} (${t.actionName.toLowerCase()})`).join(', ');
           body = `Dnes potřebují péči: ${summary}`;
         } else {
-          const wateringCount = tasksForDay.filter((t) => t.actionName.toLowerCase().includes('zal')).length;
+          const wateringCount = tasksForDay.filter((t) => t.isWatering).length;
           const otherCount = tasksForDay.length - wateringCount;
           if (wateringCount > 0 && otherCount > 0) {
             body = `Dnes potřebuje zalít ${wateringCount} ${wateringCount === 1 ? 'kytička' : wateringCount < 5 ? 'kytičky' : 'kytiček'} a dalších ${otherCount} úkonů péče.`;
@@ -304,6 +324,34 @@ export const notificationService = {
           channelId: CARE_CHANNEL_ID,
         });
       }
+    }
+
+    // 6b. Připomínka pravidelné dvouměsíční zálohy (ID: 8888)
+    if (rostliny.length > 0) {
+      const backupStatus = backupService.getBackupStatus();
+      let scheduledBackupAt: Date;
+      if (backupStatus.isDue) {
+        // Pokud uplynulo 60 dní nebo záloha nikdy neproběhla, naplánovat na nejbližších 10:00 dopoledne
+        const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0, 0);
+        if (candidate.getTime() <= now.getTime()) {
+          scheduledBackupAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 10, 0, 0, 0);
+        } else {
+          scheduledBackupAt = candidate;
+        }
+      } else {
+        scheduledBackupAt = backupStatus.nextBackupDate;
+      }
+
+      notificationsToSchedule.push({
+        id: BACKUP_NOTIFICATION_ID,
+        title: '📦 Kytičkář – Čas na zálohu',
+        body: 'Od poslední zálohy uplynuly 2 měsíce. Nezapomeňte si v Nastavení stáhnout aktuální ZIP balíček!',
+        schedule: {
+          at: scheduledBackupAt,
+          allowWhileIdle: true,
+        },
+        channelId: BACKUP_CHANNEL_ID,
+      });
     }
 
     // 7. Zrušení starých a uložení nových do Android AlarmManageru
@@ -336,6 +384,9 @@ export const notificationService = {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('kytickar-care-updated', () => {
+    notificationService.rescheduleAllReminders().catch(() => {});
+  });
+  window.addEventListener('kytickar-backup-completed', () => {
     notificationService.rescheduleAllReminders().catch(() => {});
   });
 }

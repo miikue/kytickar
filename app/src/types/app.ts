@@ -24,6 +24,7 @@ export type TypAkce = {
   ikona?: string | null;
   intervalDny?: number | null;
   odlozitDny?: number | null;
+  isWatering?: boolean | null;
 };
 
 export type ActivityLog = {

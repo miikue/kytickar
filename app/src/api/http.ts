@@ -6,23 +6,37 @@ export const DEFAULT_PLANT_ICON =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' width='48' height='48'><rect width='48' height='48' rx='12' fill='%23e8f5e9'/><path d='M24 10c0 0-10 6-10 16 0 7 5 11 10 11s10-4 10-11c0-10-10-16-10-16zm0 24c-3.5 0-7-2.5-7-8 0-6 7-11 7-11s7 5 7 11c0 5.5-3.5 8-7 8z' fill='%232e7d32'/><path d='M24 16v18' stroke='%232e7d32' stroke-width='2' stroke-linecap='round'/></svg>";
 
 const photoUrlCache = new Map<string, string>();
+const pendingLookups = new Set<string>();
 
 export function setPhotoUrlCache(fileName: string, dataUrl: string): void {
   const clean = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
   photoUrlCache.set(clean, dataUrl);
+  pendingLookups.delete(clean);
+}
+
+export function removePhotoUrlCache(fileName: string): void {
+  const clean = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+  photoUrlCache.delete(clean);
+  pendingLookups.delete(clean);
 }
 
 export function clearPhotoUrlCache(): void {
   photoUrlCache.clear();
+  pendingLookups.clear();
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('kytickar-db-reset', () => {
-    photoUrlCache.clear();
+    clearPhotoUrlCache();
   });
   window.addEventListener('kytickar-photo-saved', ((e: CustomEvent<{ fileName: string; dataUrl: string }>) => {
     if (e.detail?.fileName && e.detail?.dataUrl) {
       setPhotoUrlCache(e.detail.fileName, e.detail.dataUrl);
+    }
+  }) as EventListener);
+  window.addEventListener('kytickar-photo-deleted', ((e: CustomEvent<string>) => {
+    if (e.detail) {
+      removePhotoUrlCache(e.detail);
     }
   }) as EventListener);
 }
@@ -37,20 +51,36 @@ export function getFileUrl(fileName: string | null | undefined): string {
   const cached = photoUrlCache.get(cleanName);
   if (cached) return cached;
 
-  localDb.getPhoto(cleanName).then((dataUrl) => {
-    if (dataUrl) {
-      photoUrlCache.set(cleanName, dataUrl);
-      window.dispatchEvent(new CustomEvent('kytickar-photo-loaded', { detail: cleanName }));
-    }
-  });
+  const fallbackUrl = fileName.startsWith('/')
+    ? fileName
+    : API_BASE_URL
+    ? `${API_BASE_URL}/api/files/${cleanName}`
+    : `/species/${cleanName}`;
 
-  if (fileName.startsWith('/')) {
-    return fileName;
+  if (pendingLookups.has(cleanName)) {
+    return fallbackUrl;
   }
-  if (API_BASE_URL) {
-    return `${API_BASE_URL}/api/files/${cleanName}`;
-  }
-  return `/species/${cleanName}`;
+
+  pendingLookups.add(cleanName);
+  localDb
+    .getPhoto(cleanName)
+    .then((dataUrl) => {
+      pendingLookups.delete(cleanName);
+      if (dataUrl) {
+        photoUrlCache.set(cleanName, dataUrl);
+        window.dispatchEvent(new CustomEvent('kytickar-photo-loaded', { detail: cleanName }));
+      } else {
+        // Obrázek není v IndexedDB (jedná se o statickou fotografii druhu z bundle).
+        // Zapamatujeme si fallback URL, abychom při dalších renderech neprováděli zbytečné čtení z DB.
+        photoUrlCache.set(cleanName, fallbackUrl);
+      }
+    })
+    .catch(() => {
+      pendingLookups.delete(cleanName);
+      photoUrlCache.set(cleanName, fallbackUrl);
+    });
+
+  return fallbackUrl;
 }
 
 const isStandaloneMode = Capacitor.isNativePlatform() || !API_BASE_URL;

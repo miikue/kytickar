@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { getFileUrl } from '../api/http';
 import type { Druh, Medium, Rod, Umisteni } from '../types/app';
 import PhotoSourceModal from '../components/PhotoSourceModal';
+import { useBackButton } from '../hooks/useBackButton';
 
 type NewPlantForm = {
   vlastniJmeno: string;
@@ -119,6 +120,36 @@ export default function PridatKytkuPage({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [selectedRodFilterId, setSelectedRodFilterId] = useState('');
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // 1. Výběr fotky fotoaparát / galerie (priorita 100)
+  useBackButton('pridat-photo-modal', 100, isPhotoModalOpen, () => {
+    setIsPhotoModalOpen(false);
+    return true;
+  });
+
+  // 2. Podformulář pro nový rod uvnitř druhu (priorita 85)
+  useBackButton('pridat-druh-rod-form', 85, showNewDruhRodForm, () => {
+    setShowNewDruhRodForm(false);
+    return true;
+  });
+
+  // 3. Modál pro nový druh (priorita 80)
+  useBackButton('pridat-druh-form', 80, showNewDruhForm, () => {
+    setShowNewDruhForm(false);
+    return true;
+  });
+
+  // 4. Modál pro nový substrát (priorita 80)
+  useBackButton('pridat-medium-form', 80, showNewMediumForm, () => {
+    setShowNewMediumForm(false);
+    return true;
+  });
+
+  // 5. Modál pro nové umístění (priorita 80)
+  useBackButton('pridat-umisteni-form', 80, showNewUmisteniForm, () => {
+    setShowNewUmisteniForm(false);
+    return true;
+  });
 
   useEffect(() => {
     if (!initialPhoto) {

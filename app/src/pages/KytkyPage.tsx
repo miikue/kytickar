@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { uploadFile, getFileUrl } from '../api/http';
+import { uploadFile } from '../api/http';
 import { createGalerieFotka, deleteGalerieFotka } from '../api/galerieFotkyApi';
 import {
   fetchRostlinaGalerie,
@@ -14,7 +14,13 @@ import {
 import { logActivity } from '../api/activityApi';
 import { deleteRostlina, updateRostlina } from '../api/rostlinyApi';
 import type { Druh, GalerieFotka, HistoriePece, Medium, Rostlina, RostlinaOdZaliti, TypAkce, Umisteni } from '../types/app';
-import PhotoSourceModal from '../components/PhotoSourceModal';
+import { isWateringAction } from '../services/localDb';
+import PlantStories from '../components/PlantStories';
+import PlantList from '../components/PlantList';
+import PlantDetail from '../components/PlantDetail';
+import PhotoPreviewModal from '../components/PhotoPreviewModal';
+import type { PlantEditFormData } from '../components/PlantEditForm';
+import { useBackButton } from '../hooks/useBackButton';
 
 type Props = {
   rostliny: Rostlina[];
@@ -26,15 +32,7 @@ type Props = {
   resetTrigger?: number;
 };
 
-type PlantEditForm = {
-  vlastniJmeno: string;
-  druhId: string;
-  mediumId: string;
-  umisteniId: string;
-  aktualniZdravi: string;
-};
-
-const EMPTY_EDIT_FORM: PlantEditForm = {
+const EMPTY_EDIT_FORM: PlantEditFormData = {
   vlastniJmeno: '',
   druhId: '',
   mediumId: '',
@@ -60,7 +58,7 @@ export default function KytkyPage({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<PlantEditForm>(EMPTY_EDIT_FORM);
+  const [editForm, setEditForm] = useState<PlantEditFormData>(EMPTY_EDIT_FORM);
   const [editMessage, setEditMessage] = useState<string | null>(null);
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
   const [newPhotoPoznamka, setNewPhotoPoznamka] = useState('');
@@ -77,6 +75,46 @@ export default function KytkyPage({
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [shouldScrollToDetail, setShouldScrollToDetail] = useState(false);
   const detailCardRef = useRef<HTMLElement | null>(null);
+
+  // 1. Zvětšená fotografie (nejvyšší priorita 100)
+  useBackButton('kytky-expanded-photo', 100, expandedPhoto !== null, () => {
+    setExpandedPhoto(null);
+    return true;
+  });
+
+  // 2. Dialog výběru fotoaparát / galerie (priorita 100)
+  useBackButton('kytky-photo-modal', 100, isDetailPhotoModalOpen, () => {
+    setIsDetailPhotoModalOpen(false);
+    return true;
+  });
+
+  // 3. Zobrazení Story / Příběhu (priorita 90)
+  useBackButton('kytky-story', 90, activeStoryPlant !== null, () => {
+    setActiveStoryPlant(null);
+    return true;
+  });
+
+  // 4. Formulář přidání fotky v detailu (priorita 75)
+  useBackButton('kytky-add-photo-form', 75, showAddPhotoForm, () => {
+    setShowAddPhotoForm(false);
+    setNewPhoto(null);
+    setNewPhotoPoznamka('');
+    return true;
+  });
+
+  // 5. Editační režim kytky (priorita 70)
+  useBackButton('kytky-edit-plant', 70, isEditing, () => {
+    setIsEditing(false);
+    setEditMessage(null);
+    return true;
+  });
+
+  // 6. Detail kytky (priorita 50 - vrátí zpět do seznamu)
+  useBackButton('kytky-selected-plant', 50, selectedId !== null, () => {
+    setSelectedId(null);
+    onDetailOpenChange?.(false);
+    return true;
+  });
 
   const selectedRostlina = useMemo(
     () => rostliny.find((item) => item.id === selectedId) || null,
@@ -146,14 +184,6 @@ export default function KytkyPage({
     }
   }, [resetTrigger]);
 
-  function isWateringActionName(name: string) {
-    return name
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .includes('zal');
-  }
-
   useEffect(() => {
     let active = true;
 
@@ -177,8 +207,8 @@ export default function KytkyPage({
         ]);
 
         const sortedTypy = [...typyData].sort((a, b) => {
-          const aIsWatering = isWateringActionName(a.typAkce);
-          const bIsWatering = isWateringActionName(b.typAkce);
+          const aIsWatering = isWateringAction(a);
+          const bIsWatering = isWateringAction(b);
 
           if (aIsWatering && !bIsWatering) {
             return -1;
@@ -191,7 +221,9 @@ export default function KytkyPage({
           return a.typAkce.localeCompare(b.typAkce, 'cs-CZ');
         });
 
-        const defaultActionId = String(sortedTypy.find((item) => isWateringActionName(item.typAkce))?.id || sortedTypy[0]?.id || '');
+        const defaultActionId = String(
+          sortedTypy.find((item) => isWateringAction(item))?.id || sortedTypy[0]?.id || '',
+        );
 
         if (active) {
           setGalerie(galerieData);
@@ -271,16 +303,15 @@ export default function KytkyPage({
     setStoryActionLoading(true);
     setStoryActionFeedback(null);
     try {
-      let targetTypeId: number | null = null;
-      try {
-        const types = await fetchTypyAkci();
-        const waterType = types.find((t) => isWateringActionName(t.typAkce)) || types[0];
-        if (waterType) targetTypeId = waterType.id;
-      } catch {
-        targetTypeId = 1;
+      const types = await fetchTypyAkci();
+      const waterType = types.find((t) => t.isWatering) || types.find((t) => isWateringAction(t));
+      if (!waterType) {
+        throw new Error(
+          'Nebyl nalezen žádný typ akce pro zálivku. Nastavte v Katalogu u typu péče příznak "Považovat za zálivku".',
+        );
       }
 
-      await createHistoriePece({ rostlinaId, typAkceId: targetTypeId || 1 });
+      await createHistoriePece({ rostlinaId, typAkceId: waterType.id });
       void logActivity({
         eventType: 'create',
         section: 'historie_pece',
@@ -290,10 +321,10 @@ export default function KytkyPage({
 
       setStoryActionFeedback(`💧 ${vlastniJmeno} zalita!`);
 
-      // Determine next plant in the queue before updating summary
       const currentIndex = nejdelsiOdZaliti.findIndex((item) => item.id === rostlinaId);
       const remaining = nejdelsiOdZaliti.filter((item) => item.id !== rostlinaId);
-      const nextPlant = remaining.length > 0 ? remaining[currentIndex < remaining.length ? currentIndex : 0] : null;
+      const nextPlant =
+        remaining.length > 0 ? remaining[currentIndex < remaining.length ? currentIndex : 0] : null;
 
       await loadZalitiSummary();
       await onReload();
@@ -323,7 +354,7 @@ export default function KytkyPage({
     setStoryActionLoading(true);
     setStoryActionFeedback(null);
     try {
-      const waterType = typyAkci.find((t) => isWateringActionName(t.typAkce));
+      const waterType = typyAkci.find((t) => t.isWatering) || typyAkci.find((t) => isWateringAction(t));
       const snoozeDays = waterType?.odlozitDny || 2;
       await odlozitZaliti(rostlinaId, snoozeDays);
       void logActivity({
@@ -336,12 +367,13 @@ export default function KytkyPage({
       setStoryActionFeedback(
         `⏳ Zálivka pro ${vlastniJmeno} odložena o ${snoozeDays} ${
           snoozeDays === 1 ? 'den' : snoozeDays < 5 ? 'dny' : 'dní'
-        }.`
+        }.`,
       );
 
       const currentIndex = nejdelsiOdZaliti.findIndex((item) => item.id === rostlinaId);
       const remaining = nejdelsiOdZaliti.filter((item) => item.id !== rostlinaId);
-      const nextPlant = remaining.length > 0 ? remaining[currentIndex < remaining.length ? currentIndex : 0] : null;
+      const nextPlant =
+        remaining.length > 0 ? remaining[currentIndex < remaining.length ? currentIndex : 0] : null;
 
       await loadZalitiSummary();
       await onReload();
@@ -500,7 +532,7 @@ export default function KytkyPage({
       await createHistoriePece({ rostlinaId: selectedId, typAkceId: Number(selectedTypAkceId) });
       const actionObj = typyAkci.find((t) => String(t.id) === selectedTypAkceId);
       const actionName = actionObj?.typAkce || 'Akce';
-      const actionIcon = actionObj?.ikona || (actionObj && isWateringActionName(actionObj.typAkce) ? '💧' : '✨');
+      const actionIcon = actionObj?.ikona || (actionObj && isWateringAction(actionObj) ? '💧' : '✨');
       setNovaAkceMessage(`${actionIcon} ${actionName} úspěšně zaznamenána!`);
       void logActivity({
         eventType: 'create',
@@ -598,725 +630,80 @@ export default function KytkyPage({
   return (
     <section className={`plants-layout ${selectedRostlina ? 'detail-open' : 'list-open'}`}>
       <article className="plants-list-container">
-        {/* STORIES / REELS: Kytky co potřebují pozornost */}
-        {rostliny.length > 0 && (
-          nejdelsiOdZaliti.length > 0 ? (
-            <section className="plant-stories-section">
-              <div className="section-title-row">
-                <span className="section-title-label">⚡ Potřebují péči</span>
-                <span className="section-title-count">{nejdelsiOdZaliti.length}</span>
-              </div>
+        <PlantStories
+          rostliny={rostliny}
+          nejdelsiOdZaliti={nejdelsiOdZaliti}
+          typyAkci={typyAkci}
+          activeStoryPlant={activeStoryPlant}
+          setActiveStoryPlant={setActiveStoryPlant}
+          storyActionFeedback={storyActionFeedback}
+          setStoryActionFeedback={setStoryActionFeedback}
+          storyActionLoading={storyActionLoading}
+          onQuickWater={handleQuickWater}
+          onQuickPostpone={handleQuickPostpone}
+          onOpenDetail={openPlantDetail}
+        />
 
-              <div className="plant-stories-scroll">
-                {nejdelsiOdZaliti.map((item) => {
-                  const overviewPlant = rostliny.find((rostlina) => rostlina.id === item.id) || null;
-                  const thumb = overviewPlant?.galerieFotky?.[0] || null;
-                  const waterType = typyAkci.find((t) => isWateringActionName(t.typAkce));
-                  const urgentThreshold = waterType?.intervalDny || 4;
-                  const isUrgent = item.dnyOdPoslednihoZaliti === null || item.dnyOdPoslednihoZaliti >= urgentThreshold;
-
-                  return (
-                    <div
-                      key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      className={`story-circle-item ${isUrgent ? 'story-urgent' : ''}`}
-                      onClick={() => {
-                        setStoryActionFeedback(null);
-                        setActiveStoryPlant(item);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          setStoryActionFeedback(null);
-                          setActiveStoryPlant(item);
-                        }
-                      }}
-                      title={`${item.vlastniJmeno} - klikněte pro rychlé akce`}
-                    >
-                      <div className="story-ring">
-                        <div className="story-avatar-wrap">
-                          {thumb ? (
-                            <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="story-avatar-img" />
-                          ) : (
-                            <span className="story-avatar-emoji">🌱</span>
-                          )}
-                        </div>
-                        <span className="story-badge">💧</span>
-                      </div>
-                      <span className="story-name">{item.vlastniJmeno}</span>
-                      <span className="story-days">
-                        {item.dnyOdPoslednihoZaliti === null ? 'Nezalito' : `${item.dnyOdPoslednihoZaliti} d`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ) : (
-            <section className="plant-stories-section">
-              <div className="all-watered-banner">
-                <div className="all-watered-icon-wrap">
-                  <span className="all-watered-icon">🌿</span>
-                </div>
-                <div className="all-watered-content">
-                  <strong>Všechny kytičky mají péči!</strong>
-                  <span>Žádná rostlina momentálně nepotřebuje zálivku.</span>
-                </div>
-                <span className="all-watered-check">✅</span>
-              </div>
-            </section>
-          )
-        )}
-
-        {/* HLAVNÍ SEZNAM ROSTLIN S NENÁPADNÝM VYHLEDÁVÁNÍM */}
-        <div className="plants-section-header">
-          <div className="plants-section-title-wrap">
-            <h2 className="plants-section-title">Moje kytičky</h2>
-            <span className="plants-count-pill">
-              {filteredRostliny.length === rostliny.length
-                ? rostliny.length
-                : `${filteredRostliny.length} / ${rostliny.length}`}
-            </span>
-          </div>
-
-          <div className="plants-section-actions">
-            <button
-              type="button"
-              className={`plants-search-toggle-btn ${isSearchExpanded || searchQuery || selectedUmisteniFilterId !== 'all' ? 'active' : ''}`}
-              onClick={() => setIsSearchExpanded((prev) => !prev)}
-              title={isSearchExpanded ? 'Zavřít hledání' : 'Hledat a filtrovat kytičky'}
-              aria-label="Hledat a filtrovat"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* NENÁPADNÝ ROZBALOVACÍ VYHLEDÁVACÍ A FILTROVACÍ PANEL */}
-        {(isSearchExpanded || searchQuery || selectedUmisteniFilterId !== 'all') && (
-          <div className="plants-subtle-search-bar">
-            <div className="plants-subtle-search-input-wrap">
-              <span className="plants-subtle-search-icon">🔍</span>
-              <input
-                type="search"
-                className="plants-subtle-search-input"
-                placeholder="Hledat podle jména, druhu či umístění..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus={isSearchExpanded && !searchQuery}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className="plants-subtle-search-clear"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Smazat hledaný text"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {umisteni && umisteni.length > 0 && (
-              <div className="plants-filter-chips-row">
-                <button
-                  type="button"
-                  className={`filter-chip ${selectedUmisteniFilterId === 'all' ? 'active' : ''}`}
-                  onClick={() => setSelectedUmisteniFilterId('all')}
-                >
-                  Vše ({rostliny.length})
-                </button>
-                {umisteni.map((u) => {
-                  const count = rostliny.filter((r) => r.umisteni?.id === u.id).length;
-                  if (count === 0) return null;
-                  return (
-                    <button
-                      key={u.id}
-                      type="button"
-                      className={`filter-chip ${selectedUmisteniFilterId === String(u.id) ? 'active' : ''}`}
-                      onClick={() => setSelectedUmisteniFilterId(selectedUmisteniFilterId === String(u.id) ? 'all' : String(u.id))}
-                    >
-                      📍 {u.nazev} ({count})
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {rostliny.length === 0 ? (
-          <div className="plants-empty-state">
-            <span className="empty-icon">🪴</span>
-            <p>Zatím tu nemáte žádné kytičky.</p>
-          </div>
-        ) : filteredRostliny.length === 0 ? (
-          <div className="plants-empty-state">
-            <span className="empty-icon">🔍</span>
-            <p>Žádná kytička neodpovídá zadanému hledání.</p>
-            <button
-              type="button"
-              className="plants-empty-reset-btn"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedUmisteniFilterId('all');
-              }}
-            >
-              Zrušit filtry
-            </button>
-          </div>
-        ) : (
-          <div className="mobile-plants-grid">
-            {filteredRostliny.map((item) => {
-              const thumb = item.galerieFotky?.[0];
-              const isSelected = item.id === selectedId;
-
-              return (
-                <div
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  className={`mobile-plant-card ${isSelected ? 'active' : ''}`}
-                  onClick={() => openPlantDetail(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      openPlantDetail(item.id);
-                    }
-                  }}
-                >
-                  <div className="mobile-plant-card-media">
-                    {thumb ? (
-                      <img src={getFileUrl(thumb.fotkaName)} alt={item.vlastniJmeno} className="mobile-plant-card-img" />
-                    ) : (
-                      <div className="mobile-plant-card-empty">🌿</div>
-                    )}
-                    <span className="mobile-plant-health-badge">💚 {item.aktualniZdravi}/5</span>
-                  </div>
-                  <div className="mobile-plant-card-body">
-                    <strong className="mobile-plant-card-title">{item.vlastniJmeno}</strong>
-                    <span className="mobile-plant-card-species">{item.druh?.nazev || '-'}</span>
-                    {item.umisteni && (
-                      <span className="mobile-plant-card-location">📍 {item.umisteni.nazev}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <PlantList
+          rostliny={rostliny}
+          filteredRostliny={filteredRostliny}
+          umisteni={umisteni}
+          selectedId={selectedId}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedUmisteniFilterId={selectedUmisteniFilterId}
+          setSelectedUmisteniFilterId={setSelectedUmisteniFilterId}
+          isSearchExpanded={isSearchExpanded}
+          setIsSearchExpanded={setIsSearchExpanded}
+          onSelectPlant={openPlantDetail}
+        />
       </article>
 
-      <article ref={detailCardRef} className="plant-detail-container">
-        {selectedRostlina ? (
-          <>
-            {/* STICKY TOP BAR BELOW CAMERA NOTCH */}
-            <div className="detail-mobile-top-bar">
-              <button type="button" className="detail-back-button" onClick={goBackToList}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5" />
-                  <path d="M12 19l-7-7 7-7" />
-                </svg>
-                <span>Zpět na seznam</span>
-              </button>
+      <PlantDetail
+        ref={detailCardRef}
+        selectedRostlina={selectedRostlina}
+        detailLoading={detailLoading}
+        detailError={detailError}
+        isEditing={isEditing}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        editMessage={editMessage}
+        druhy={druhy}
+        media={media}
+        umisteni={umisteni}
+        typyAkci={typyAkci}
+        selectedTypAkceId={selectedTypAkceId}
+        setSelectedTypAkceId={setSelectedTypAkceId}
+        novaAkceMessage={novaAkceMessage}
+        galerie={galerie}
+        historie={historie}
+        latestPhoto={latestPhoto}
+        newPhoto={newPhoto}
+        setNewPhoto={setNewPhoto}
+        newPhotoPoznamka={newPhotoPoznamka}
+        setNewPhotoPoznamka={setNewPhotoPoznamka}
+        photoMessage={photoMessage}
+        setPhotoMessage={setPhotoMessage}
+        showAddPhotoForm={showAddPhotoForm}
+        setShowAddPhotoForm={setShowAddPhotoForm}
+        isDetailPhotoModalOpen={isDetailPhotoModalOpen}
+        setIsDetailPhotoModalOpen={setIsDetailPhotoModalOpen}
+        onBackToList={goBackToList}
+        onStartEditing={startEditing}
+        onCancelEditing={cancelEditing}
+        onRemoveRostlina={removeRostlina}
+        onSubmitEdit={submitEdit}
+        onSubmitNovaAkce={submitNovaAkce}
+        onSubmitNovaFotka={submitNovaFotka}
+        onRemoveHistorieItem={removeHistorieItem}
+        onExpandPhoto={setExpandedPhoto}
+      />
 
-              <div className="detail-top-actions">
-                {!isEditing ? (
-                  <>
-                    <button type="button" className="detail-action-icon-btn" onClick={startEditing} title="Upravit rostlinu" aria-label="Upravit">
-                      ✏️
-                    </button>
-                    <button type="button" className="detail-action-icon-btn danger" onClick={removeRostlina} title="Smazat rostlinu" aria-label="Smazat">
-                      🗑️
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" className="detail-action-cancel-btn" onClick={cancelEditing}>
-                    Zrušit
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {detailLoading && (
-              <div style={{ textAlign: 'center', padding: '10px', color: '#688975', fontSize: '0.88rem' }}>
-                Načítám detaily...
-              </div>
-            )}
-            {detailError && (
-              <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '12px', margin: '8px 16px', fontSize: '0.85rem' }}>
-                {detailError}
-              </div>
-            )}
-
-            {isEditing ? (
-              <section className="detail-section-card edit-card">
-                <h3 className="section-card-title">Editace rostliny</h3>
-                <form className="stack-form" onSubmit={submitEdit}>
-                  <label>
-                    Vlastní jméno
-                    <input required value={editForm.vlastniJmeno} onChange={(event) => setEditForm((prev) => ({ ...prev, vlastniJmeno: event.target.value }))} />
-                  </label>
-                  <label>
-                    Druh
-                    <select required value={editForm.druhId} onChange={(event) => setEditForm((prev) => ({ ...prev, druhId: event.target.value }))}>
-                      <option value="">-- vyber druh --</option>
-                      {druhy.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.nazev}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Substrát / Médium
-                    <select value={editForm.mediumId} onChange={(event) => setEditForm((prev) => ({ ...prev, mediumId: event.target.value }))}>
-                      <option value="">-- volitelné --</option>
-                      {media.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.nazev}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Umístění
-                    <select value={editForm.umisteniId} onChange={(event) => setEditForm((prev) => ({ ...prev, umisteniId: event.target.value }))}>
-                      <option value="">-- volitelné --</option>
-                      {umisteni.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.nazev}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Aktuální zdraví (0-5)
-                    <input
-                      type="number"
-                      min={0}
-                      max={5}
-                      required
-                      value={editForm.aktualniZdravi}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, aktualniZdravi: event.target.value }))}
-                    />
-                  </label>
-                  <div className="form-actions">
-                    <button className="action-button primary" type="submit">
-                      Uložit změny
-                    </button>
-                  </div>
-                  {editMessage && <p className="detail-feedback-msg">{editMessage}</p>}
-                </form>
-              </section>
-            ) : (
-              <div className="detail-content-scroll">
-                {/* HERO CARD S VELKOU FOTKOU A NÁZVEM */}
-                <div className="plant-detail-hero-card">
-                  <div className="hero-photo-wrapper">
-                    {latestPhoto ? (
-                      <button type="button" className="hero-photo-btn" onClick={() => setExpandedPhoto(latestPhoto)}>
-                        <img src={getFileUrl(latestPhoto.fotkaName)} alt={selectedRostlina.vlastniJmeno} className="hero-photo-img" />
-                      </button>
-                    ) : (
-                      <div className="hero-photo-empty">🌿</div>
-                    )}
-                    <div className="hero-health-pill">💚 Zdraví {selectedRostlina.aktualniZdravi}/5</div>
-                    <div className="hero-gradient-overlay">
-                      <h1 className="hero-plant-name">{selectedRostlina.vlastniJmeno}</h1>
-                      <p className="hero-plant-species">
-                        {selectedRostlina.druh?.nazev || 'Neznámý druh'}
-                        {selectedRostlina.druh?.rod?.nazev ? ` • ${selectedRostlina.druh.rod.nazev}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* METADATA CHIPS 2x2 GRID */}
-                <div className="plant-detail-chips-grid">
-                  <div className="detail-chip-card">
-                    <span className="chip-icon">🪴</span>
-                    <div className="chip-info">
-                      <span className="chip-label">Substrát</span>
-                      <strong className="chip-value">{selectedRostlina.medium?.nazev || 'Neuvedeno'}</strong>
-                    </div>
-                  </div>
-                  <div className="detail-chip-card">
-                    <span className="chip-icon">📍</span>
-                    <div className="chip-info">
-                      <span className="chip-label">Umístění</span>
-                      <strong className="chip-value">{selectedRostlina.umisteni?.nazev || 'Neuvedeno'}</strong>
-                    </div>
-                  </div>
-                  <div className="detail-chip-card">
-                    <span className="chip-icon">📅</span>
-                    <div className="chip-info">
-                      <span className="chip-label">Pořízeno</span>
-                      <strong className="chip-value">{new Date(selectedRostlina.datumPorizeni).toLocaleDateString('cs-CZ')}</strong>
-                    </div>
-                  </div>
-                  <div className="detail-chip-card">
-                    <span className="chip-icon">🏷️</span>
-                    <div className="chip-info">
-                      <span className="chip-label">Rod</span>
-                      <strong className="chip-value">{selectedRostlina.druh?.rod?.nazev || 'Neuvedeno'}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* KARTA PÉČE: JEDINÝ DROPDOWN A TLAČÍTKO PROVÉST */}
-                <div className="detail-section-card care-action-card">
-                  <div className="section-card-header">
-                    <span className="section-card-icon">⚡</span>
-                    <div>
-                      <h3 className="section-card-title">Zaznamenat péči</h3>
-                      <p className="section-card-desc">Vyberte akci a potvrďte provedení</p>
-                    </div>
-                  </div>
-
-                  <form className="detail-care-unified-form" onSubmit={submitNovaAkce}>
-                    <div className="care-row-unified">
-                      <select
-                        className="care-select-unified"
-                        value={selectedTypAkceId}
-                        onChange={(event) => setSelectedTypAkceId(event.target.value)}
-                        aria-label="Výběr péče"
-                      >
-                        {typyAkci.map((item) => {
-                          const isWater = isWateringActionName(item.typAkce);
-                          const icon = isWater
-                            ? '💧'
-                            : item.typAkce.toLowerCase().includes('hnoj')
-                            ? '🌱'
-                            : item.typAkce.toLowerCase().includes('ros')
-                            ? '💨'
-                            : item.typAkce.toLowerCase().includes('pres')
-                            ? '🪴'
-                            : '🌿';
-                          return (
-                            <option key={item.id} value={item.id}>
-                              {icon} {item.typAkce}
-                            </option>
-                          );
-                        })}
-                      </select>
-
-                      <button className="care-execute-btn" type="submit" disabled={!selectedTypAkceId}>
-                        Provést
-                      </button>
-                    </div>
-                    {novaAkceMessage && (
-                      <div className="detail-care-feedback-badge">{novaAkceMessage}</div>
-                    )}
-                  </form>
-                </div>
-
-                {/* FOTOGALERIE */}
-                <div className="detail-section-card">
-                  <div className="section-card-header-split">
-                    <div className="section-card-header-left">
-                      <span className="section-card-icon">📸</span>
-                      <div>
-                        <h3 className="section-card-title">Fotogalerie</h3>
-                        <p className="section-card-desc">{galerie.length} {galerie.length === 1 ? 'fotografie' : 'fotografií'}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="detail-add-photo-toggle"
-                      onClick={() => {
-                        if (showAddPhotoForm && !newPhoto) {
-                          setShowAddPhotoForm(false);
-                        } else if (showAddPhotoForm && newPhoto) {
-                          setShowAddPhotoForm(false);
-                          setNewPhoto(null);
-                        } else {
-                          setShowAddPhotoForm(true);
-                          setIsDetailPhotoModalOpen(true);
-                        }
-                      }}
-                    >
-                      {showAddPhotoForm ? 'Zavřít' : '+ Přidat fotku'}
-                    </button>
-                  </div>
-
-                  {showAddPhotoForm && (
-                    <div className="detail-photo-upload-box">
-                      {newPhoto ? (
-                        <div className="detail-photo-chosen-preview">
-                          <img
-                            src={URL.createObjectURL(newPhoto)}
-                            alt="Nová fotka"
-                            className="detail-photo-thumb-img"
-                          />
-                          <div className="detail-photo-chosen-info">
-                            <span className="chosen-name">{newPhoto.name}</span>
-                            <span className="chosen-size">{Math.round(newPhoto.size / 1024)} KB</span>
-                            <div className="chosen-actions">
-                              <button
-                                type="button"
-                                className="photo-action-btn secondary small"
-                                onClick={() => setIsDetailPhotoModalOpen(true)}
-                              >
-                                🔄 Změnit fotku
-                              </button>
-                              <button
-                                type="button"
-                                className="photo-action-btn danger small"
-                                onClick={() => setNewPhoto(null)}
-                              >
-                                ✕ Zrušit
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="detail-photo-pick-trigger-btn"
-                          onClick={() => setIsDetailPhotoModalOpen(true)}
-                        >
-                          <span className="pick-trigger-icon">📷</span>
-                          <div className="pick-trigger-text">
-                            <strong>Vyfotit nebo vybrat fotografii</strong>
-                            <span>Klepnutím otevřete volbu fotoaparát / galerie</span>
-                          </div>
-                        </button>
-                      )}
-
-                      <form className="detail-photo-form-controls" onSubmit={submitNovaFotka}>
-                        <input
-                          type="text"
-                          className="detail-photo-input-note"
-                          value={newPhotoPoznamka}
-                          onChange={(event) => setNewPhotoPoznamka(event.target.value)}
-                          placeholder="Poznámka k fotce (např. nový výhonek, po zálivce...)"
-                        />
-                        <div className="detail-photo-actions-row">
-                          <button className="action-button primary" type="submit" disabled={!newPhoto}>
-                            Uložit do fotogalerie
-                          </button>
-                        </div>
-                        {photoMessage && <p className="detail-feedback-msg">{photoMessage}</p>}
-                      </form>
-                    </div>
-                  )}
-
-                  <PhotoSourceModal
-                    isOpen={isDetailPhotoModalOpen}
-                    onClose={() => setIsDetailPhotoModalOpen(false)}
-                    onPhotoSelected={(file) => {
-                      setNewPhoto(file);
-                      setShowAddPhotoForm(true);
-                      setPhotoMessage(null);
-                    }}
-                  />
-
-                  {galerie.length > 0 ? (
-                    <div className="detail-gallery-row">
-                      {galerie.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="detail-gallery-thumb-btn"
-                          onClick={() => setExpandedPhoto(item)}
-                        >
-                          <img src={getFileUrl(item.fotkaName)} alt={item.poznamka || 'Fotka'} className="detail-gallery-thumb-img" />
-                          <span className="detail-gallery-thumb-date">{new Date(item.datumPorizeni).toLocaleDateString('cs-CZ')}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="detail-empty-text">Zatím bez dalších fotografií.</p>
-                  )}
-                </div>
-
-                {/* HISTORIE PÉČE */}
-                <div className="detail-section-card">
-                  <div className="section-card-header">
-                    <span className="section-card-icon">📜</span>
-                    <div>
-                      <h3 className="section-card-title">Historie péče</h3>
-                      <p className="section-card-desc">{historie.length} {historie.length === 1 ? 'záznam' : 'záznamů'}</p>
-                    </div>
-                  </div>
-
-                  {historie.length > 0 ? (
-                    <ul className="detail-history-list">
-                      {historie.map((item) => {
-                        const isWatering = isWateringActionName(item.typAkce.typAkce);
-                        const icon = item.typAkce.ikona || (isWatering ? '💧' : '🌱');
-                        return (
-                          <li key={item.id} className="detail-history-item">
-                            <span className="history-item-icon">{icon}</span>
-                            <div className="history-item-body">
-                              <strong>{item.typAkce.typAkce}</strong>
-                              <span>{new Date(item.datum).toLocaleString('cs-CZ', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                            </div>
-                            <button
-                              type="button"
-                              className="history-delete-btn"
-                              onClick={() => removeHistorieItem(item.id)}
-                              title="Smazat záznam"
-                              aria-label="Smazat záznam"
-                            >
-                              ✕
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="detail-empty-text">Zatím žádné záznamy o péči.</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="detail-empty-text">Vyberte rostlinu ze seznamu.</p>
-        )}
-      </article>
-
-      {expandedPhoto && (
-        <div className="photo-modal" role="dialog" aria-modal="true">
-          <button type="button" className="photo-modal-backdrop" onClick={() => setExpandedPhoto(null)} aria-label="Zavrit detail fotky" />
-          <div className="photo-modal-panel">
-            <img src={getFileUrl(expandedPhoto.fotkaName)} alt={expandedPhoto.poznamka || 'Zvetsena fotka'} className="photo-modal-image" />
-            <div className="photo-modal-meta">
-              <p>Datum porizeni: {new Date(expandedPhoto.datumPorizeni).toLocaleDateString('cs-CZ')}</p>
-              {expandedPhoto.poznamka && <p>Poznamka: {expandedPhoto.poznamka}</p>}
-            </div>
-            <div className="photo-modal-actions form-actions">
-              <button
-                type="button"
-                className="icon-button modal-icon-button danger"
-                onClick={removeExpandedPhoto}
-                title="Smazat fotku"
-                aria-label="Smazat fotku"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h2v9H7V9Zm4 0h2v9h-2V9Zm4 0h2v9h-2V9Z" fill="currentColor" />
-                </svg>
-              </button>
-              <a
-                className="icon-button modal-icon-button"
-                href={getFileUrl(expandedPhoto.fotkaName)}
-                download={expandedPhoto.fotkaName}
-                target="_blank"
-                rel="noreferrer"
-                title="Stahnout fotku"
-                aria-label="Stahnout fotku"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 3v10.17l3.59-3.58L17 11l-5 5-5-5 1.41-1.41L11 13.17V3Zm-7 14h14v3H5Z" fill="currentColor" />
-                </svg>
-              </a>
-              <button type="button" className="button secondary" onClick={() => setExpandedPhoto(null)}>
-                Zavrit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* QUICK STORY ACTION MODAL / SHEET */}
-      {activeStoryPlant && (
-        <div className="story-modal" role="dialog" aria-modal="true">
-          <div
-            className="story-modal-backdrop"
-            onClick={() => {
-              setActiveStoryPlant(null);
-              setStoryActionFeedback(null);
-            }}
-          />
-          <div className="story-modal-card">
-            <button
-              type="button"
-              className="story-modal-close"
-              onClick={() => {
-                setActiveStoryPlant(null);
-                setStoryActionFeedback(null);
-              }}
-              aria-label="Zavřít"
-            >
-              ✕
-            </button>
-
-            {(() => {
-              const fullPlant = rostliny.find((r) => r.id === activeStoryPlant.id);
-              const thumb = fullPlant?.galerieFotky?.[0];
-              return (
-                <>
-                  <div className="story-modal-hero">
-                    {thumb ? (
-                      <img
-                        src={getFileUrl(thumb.fotkaName)}
-                        alt={activeStoryPlant.vlastniJmeno}
-                        className="story-modal-image"
-                      />
-                    ) : (
-                      <div className="story-modal-placeholder">🌿</div>
-                    )}
-                    <div className="story-modal-badge">
-                      {activeStoryPlant.dnyOdPoslednihoZaliti === null
-                        ? 'Zatím bez zálivky'
-                        : `Nezalito ${activeStoryPlant.dnyOdPoslednihoZaliti} dní`}
-                    </div>
-                  </div>
-
-                  <div className="story-modal-info">
-                    <h3 className="story-modal-title">{activeStoryPlant.vlastniJmeno}</h3>
-                    <p className="story-modal-species">
-                      {activeStoryPlant.druh.nazev}
-                      {activeStoryPlant.druh.rodNazev ? ` • ${activeStoryPlant.druh.rodNazev}` : ''}
-                    </p>
-                    {fullPlant?.umisteni && (
-                      <span className="story-modal-location">📍 {fullPlant.umisteni.nazev}</span>
-                    )}
-                  </div>
-
-                  {storyActionFeedback && (
-                    <div className="story-modal-feedback">{storyActionFeedback}</div>
-                  )}
-
-                  <div className="story-modal-actions">
-                    <button
-                      type="button"
-                      className="story-action-btn primary"
-                      disabled={storyActionLoading}
-                      onClick={() => handleQuickWater(activeStoryPlant.id, activeStoryPlant.vlastniJmeno)}
-                    >
-                      💧 Zalít nyní
-                    </button>
-                    <button
-                      type="button"
-                      className="story-action-btn secondary"
-                      disabled={storyActionLoading}
-                      onClick={() => handleQuickPostpone(activeStoryPlant.id, activeStoryPlant.vlastniJmeno)}
-                    >
-                      ⏳ Odložit o 2 dny
-                    </button>
-                    <button
-                      type="button"
-                      className="story-action-btn ghost"
-                      onClick={() => {
-                        const id = activeStoryPlant.id;
-                        setActiveStoryPlant(null);
-                        openPlantDetail(id);
-                      }}
-                    >
-                      🔍 Otevřít celou kartu
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      <PhotoPreviewModal
+        photo={expandedPhoto}
+        onClose={() => setExpandedPhoto(null)}
+        onDelete={removeExpandedPhoto}
+      />
     </section>
   );
 }

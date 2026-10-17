@@ -11,6 +11,8 @@ type Props = {
   setTypAkceInterval: (val: string) => void;
   typAkceOdlozit: string;
   setTypAkceOdlozit: (val: string) => void;
+  typAkceIsWatering: boolean;
+  setTypAkceIsWatering: (val: boolean) => void;
   onSubmit: (event: FormEvent) => Promise<void>;
   onCancel: () => void;
   onDelete: (id: number) => Promise<void>;
@@ -46,6 +48,8 @@ export default function TypAkceEditor({
   setTypAkceInterval,
   typAkceOdlozit,
   setTypAkceOdlozit,
+  typAkceIsWatering,
+  setTypAkceIsWatering,
   onSubmit,
   onCancel,
   onDelete,
@@ -63,6 +67,9 @@ export default function TypAkceEditor({
       const defSnooze = getDefaultSnoozeDays(value);
       setTypAkceInterval(String(defInterval));
       setTypAkceOdlozit(String(defSnooze));
+      if (value.toLowerCase().includes('zal')) {
+        setTypAkceIsWatering(true);
+      }
     }
   }
 
@@ -159,6 +166,19 @@ export default function TypAkceEditor({
               onChange={(e) => setTypAkceOdlozit(e.target.value)}
             />
             <span className="action-timing-desc">O kolik dní se posune při kliknutí na „Odložit“</span>
+          </label>
+        </div>
+
+        <div className="action-watering-checkbox-row">
+          <label className="action-watering-checkbox-label">
+            <input
+              type="checkbox"
+              checked={typAkceIsWatering}
+              onChange={(e) => setTypAkceIsWatering(e.target.checked)}
+            />
+            <span className="action-watering-checkbox-text">
+              💧 <strong>Považovat za zálivku</strong> (používá se pro rychlé zalévání, frontu péče a dny od zalití)
+            </span>
           </label>
         </div>
 

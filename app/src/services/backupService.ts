@@ -13,6 +13,16 @@ export type StorageStats = {
   approximateSizeKb: number;
 };
 
+export type BackupStatus = {
+  lastBackupDate: Date | null;
+  daysSinceLastBackup: number | null;
+  isDue: boolean;
+  nextBackupDate: Date;
+};
+
+export const BACKUP_INTERVAL_DAYS = 60; // Upozornění každé 2 měsíce
+const LAST_BACKUP_STORAGE_KEY = 'kytickar_last_backup_timestamp';
+
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -26,9 +36,85 @@ function downloadBlob(blob: Blob, filename: string): void {
   }, 200);
 }
 
+const MAX_BACKUP_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
+
 async function saveBlobWithPicker(blob: Blob, filename: string, mimeType: string): Promise<void> {
   // 1. Android Native File Bridge (Capacitor) - vyvolá nativní systémový dialog "Uložit do..."
   if (typeof window !== 'undefined' && (window as any).AndroidFileSaver) {
+    const saver = (window as any).AndroidFileSaver;
+
+    // Pokud AndroidFileSaver podporuje streamování po částech (zápis bez rizika OOM)
+    if (typeof saver.startSave === 'function' && typeof saver.writeChunk === 'function' && typeof saver.finishSave === 'function') {
+      return new Promise<void>((resolve, reject) => {
+        let isDone = false;
+
+        const cleanup = () => {
+          isDone = true;
+          window.removeEventListener('android-save-ready', onSaveReady);
+          window.removeEventListener('android-file-saved', onSaved);
+        };
+
+        const onSaved = (e: any) => {
+          cleanup();
+          if (e.detail?.cancelled) {
+            reject(new Error('Ukládání souboru bylo zrušeno.'));
+          } else if (e.detail?.success) {
+            resolve();
+          } else {
+            reject(new Error('Chyba při zápisu souboru do zařízení.'));
+          }
+        };
+
+        const onSaveReady = async (e: any) => {
+          if (isDone) return;
+          if (!e.detail?.ready) {
+            cleanup();
+            reject(new Error(e.detail?.cancelled ? 'Ukládání souboru bylo zrušeno.' : 'Nepodařilo se otevřít cílový soubor.'));
+            return;
+          }
+
+          try {
+            const CHUNK_SIZE = 512 * 1024; // 512 KB
+            let offset = 0;
+            while (offset < blob.size) {
+              const slice = blob.slice(offset, offset + CHUNK_SIZE);
+              const arrayBuf = await slice.arrayBuffer();
+              const bytes = new Uint8Array(arrayBuf);
+              let binary = '';
+              const len = bytes.byteLength;
+              for (let i = 0; i < len; i += 8192) {
+                binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, Math.min(i + 8192, len))));
+              }
+              const chunkBase64 = btoa(binary);
+              const ok = saver.writeChunk(chunkBase64);
+              if (!ok) {
+                throw new Error('Chyba při zápisu části souboru do zařízení.');
+              }
+              offset += CHUNK_SIZE;
+            }
+            saver.finishSave(true);
+          } catch (err: any) {
+            cleanup();
+            try {
+              saver.finishSave(false);
+            } catch (_) {}
+            reject(err);
+          }
+        };
+
+        window.addEventListener('android-save-ready', onSaveReady);
+        window.addEventListener('android-file-saved', onSaved);
+
+        try {
+          saver.startSave(filename, mimeType);
+        } catch (err) {
+          cleanup();
+          reject(err);
+        }
+      });
+    }
+
+    // Fallback: přímé uložení celého base64 v jedné zprávě
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -52,7 +138,7 @@ async function saveBlobWithPicker(blob: Blob, filename: string, mimeType: string
 
         window.addEventListener('android-file-saved', onSaved);
         try {
-          (window as any).AndroidFileSaver.saveFile(filename, mimeType, base64Data);
+          saver.saveFile(filename, mimeType, base64Data);
         } catch (err) {
           window.removeEventListener('android-file-saved', onSaved);
           reject(err);
@@ -135,6 +221,7 @@ export const backupService = {
 
     const filename = `kytickar_zaloha_${formatDateForFilename()}.zip`;
     await saveBlobWithPicker(blob, filename, 'application/zip');
+    this.recordBackupCompleted();
 
     return {
       filename,
@@ -148,6 +235,7 @@ export const backupService = {
     const blob = new Blob([jsonString], { type: 'application/json' });
     const filename = `kytickar_db_${formatDateForFilename()}.json`;
     await saveBlobWithPicker(blob, filename, 'application/json');
+    this.recordBackupCompleted();
 
     return {
       filename,
@@ -155,22 +243,90 @@ export const backupService = {
     };
   },
 
+  getLastBackupDate(): Date | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(LAST_BACKUP_STORAGE_KEY);
+      if (!raw) return null;
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  },
+
+  recordBackupCompleted(): void {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(LAST_BACKUP_STORAGE_KEY, new Date().toISOString());
+      } catch (err) {
+        console.warn('Chyba při ukládání času zálohy:', err);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('kytickar-backup-completed'));
+      }
+    }
+  },
+
+  getBackupStatus(): BackupStatus {
+    const lastDate = this.getLastBackupDate();
+    const now = new Date();
+    if (!lastDate) {
+      return {
+        lastBackupDate: null,
+        daysSinceLastBackup: null,
+        isDue: true,
+        nextBackupDate: now,
+      };
+    }
+
+    const diffMs = now.getTime() - lastDate.getTime();
+    const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    const nextDate = new Date(
+      lastDate.getFullYear(),
+      lastDate.getMonth(),
+      lastDate.getDate() + BACKUP_INTERVAL_DAYS,
+      10,
+      0,
+      0
+    );
+
+    return {
+      lastBackupDate: lastDate,
+      daysSinceLastBackup: days,
+      isDue: days >= BACKUP_INTERVAL_DAYS,
+      nextBackupDate: nextDate,
+    };
+  },
+
   async importZipBackup(file: File): Promise<{ plantsImported: number; photosImported: number }> {
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      throw new Error(
+        `Soubor je příliš velký (${Math.round(file.size / (1024 * 1024))} MB). Maximální povolená velikost zálohy je 150 MB.`
+      );
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const zip = await JSZip.loadAsync(arrayBuffer);
 
-    // 1. Locate db.json
-    let dbFile = zip.file('db.json');
+    // 1. Vyhledání db.json v kořenovém adresáři ZIP archivu (ne zanořených náhodných JSONů)
+    let dbFile = zip.file('db.json') || zip.file('DB.JSON') || zip.file('Db.json');
     if (!dbFile) {
-      // Look for any file ending with db.json or .json in root
-      const jsonEntries = Object.keys(zip.files).filter((p) => p.endsWith('db.json') || p.endsWith('.json'));
-      if (jsonEntries.length > 0) {
-        dbFile = zip.file(jsonEntries[0]);
+      const rootJsonEntries = Object.keys(zip.files).filter((p) => {
+        const isFile = !zip.files[p].dir;
+        const isRoot = !p.includes('/');
+        const isJson = p.toLowerCase().endsWith('.json');
+        return isFile && isRoot && isJson;
+      });
+
+      if (rootJsonEntries.length > 0) {
+        const dbCandidate = rootJsonEntries.find((p) => p.toLowerCase().endsWith('db.json')) || rootJsonEntries[0];
+        dbFile = zip.file(dbCandidate);
       }
     }
 
     if (!dbFile) {
-      throw new Error('V ZIP archivu nebyl nalezen soubor db.json');
+      throw new Error('V kořenovém adresáři ZIP archivu nebyl nalezen soubor db.json ani žádná platná JSON databáze.');
     }
 
     const dbText = await dbFile.async('string');
@@ -216,6 +372,11 @@ export const backupService = {
   },
 
   async importJsonBackup(file: File): Promise<{ plantsImported: number }> {
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      throw new Error(
+        `Soubor je příliš velký (${Math.round(file.size / (1024 * 1024))} MB). Maximální povolená velikost je 150 MB.`
+      );
+    }
     const text = await file.text();
     const parsed = JSON.parse(text);
     await localDb.importAllData(parsed);

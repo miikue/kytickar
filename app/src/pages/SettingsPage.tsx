@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { backupService, type StorageStats } from '../services/backupService';
+import { backupService, type StorageStats, type BackupStatus } from '../services/backupService';
 import { notificationService, type NotificationSettings } from '../services/notificationService';
+import { useBackButton } from '../hooks/useBackButton';
 
 type Props = {
   onDataReload: () => Promise<void>;
@@ -8,10 +9,17 @@ type Props = {
 
 export default function SettingsPage({ onDataReload }: Props) {
   const [stats, setStats] = useState<StorageStats | null>(null);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>(backupService.getBackupStatus());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Zrušení potvrzovacího dialogu resetu přes tlačítko Zpět (priorita 40)
+  useBackButton('settings-reset-confirm', 40, showResetConfirm, () => {
+    setShowResetConfirm(false);
+    return true;
+  });
 
   // Notification state
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(notificationService.getSettings());
@@ -23,6 +31,7 @@ export default function SettingsPage({ onDataReload }: Props) {
     try {
       const s = await backupService.getStorageStats();
       setStats(s);
+      setBackupStatus(backupService.getBackupStatus());
     } catch (err) {
       console.error('Chyba pri nacitani statistik:', err);
     }
@@ -46,6 +55,15 @@ export default function SettingsPage({ onDataReload }: Props) {
   useEffect(() => {
     loadStats();
     loadNotificationStatus();
+
+    const handleBackupCompleted = () => {
+      setBackupStatus(backupService.getBackupStatus());
+    };
+
+    window.addEventListener('kytickar-backup-completed', handleBackupCompleted);
+    return () => {
+      window.removeEventListener('kytickar-backup-completed', handleBackupCompleted);
+    };
   }, []);
 
   const handleToggleNotifications = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,25 +206,45 @@ export default function SettingsPage({ onDataReload }: Props) {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     if (!file) return;
+
+    const lowerName = file.name.toLowerCase();
+    const isZip = lowerName.endsWith('.zip');
+    const isJson = lowerName.endsWith('.json');
+
+    if (!isZip && !isJson) {
+      setMessage({
+        type: 'error',
+        text: 'Podporovány jsou pouze záložní soubory .ZIP nebo .JSON.',
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Opravdu chcete obnovit data ze souboru "${file.name}"?\n\nUpozornění: Stávající rostliny, historie péče a fotografie budou nahrazeny obsahem této zálohy.`
+    );
+    if (!confirmed) {
+      return;
+    }
 
     setLoading(true);
     setMessage(null);
     try {
-      if (file.name.endsWith('.zip')) {
+      if (isZip) {
         const res = await backupService.importZipBackup(file);
         setMessage({
           type: 'success',
-          text: `Záloha obnovena: ${res.plantsImported} rostlin a ${res.photosImported} fotografií.`,
+          text: `Záloha úspěšně obnovena: ${res.plantsImported} rostlin a ${res.photosImported} fotografií.`,
         });
-      } else if (file.name.endsWith('.json')) {
+      } else {
         const res = await backupService.importJsonBackup(file);
         setMessage({
           type: 'success',
-          text: `JSON databáze obnovena: ${res.plantsImported} rostlin.`,
+          text: `JSON databáze úspěšně obnovena: ${res.plantsImported} rostlin.`,
         });
-      } else {
-        throw new Error('Podporovány jsou pouze soubory .zip nebo .json');
       }
 
       await onDataReload();
@@ -219,9 +257,6 @@ export default function SettingsPage({ onDataReload }: Props) {
       });
     } finally {
       setLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
@@ -398,6 +433,30 @@ export default function SettingsPage({ onDataReload }: Props) {
           </div>
         </div>
 
+        {/* Dvouměsíční upozornění / doporučení na zálohu */}
+        {backupStatus.isDue && (
+          <div className="backup-due-alert">
+            <span className="backup-due-icon">⏰</span>
+            <div className="backup-due-text">
+              <strong>Doporučení: Čas na zálohu</strong>
+              <span>
+                {backupStatus.lastBackupDate
+                  ? `Od poslední zálohy uplynulo již ${backupStatus.daysSinceLastBackup} dní (doporučeno každé 2 měsíce). Stáhněte si čerstvý ZIP balíček.`
+                  : 'Zatím jste nevytvořili žádnou zálohu. Doporučujeme stáhnout kompletní ZIP balíček pro případ ztráty nebo výměny telefonu.'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="backup-status-pill-wrap">
+          <span className={`backup-status-pill ${backupStatus.isDue ? 'pill-due' : 'pill-ok'}`}>
+            {backupStatus.lastBackupDate
+              ? `Poslední záloha: ${backupStatus.lastBackupDate.toLocaleDateString('cs-CZ')} (před ${backupStatus.daysSinceLastBackup} dny)`
+              : 'Poslední záloha: Zatím žádná'}
+          </span>
+          <span className="backup-interval-hint">Připomínka každé 2 měsíce</span>
+        </div>
+
         <div className="settings-actions-list">
           <div className="settings-action-row">
             <div className="action-info">
@@ -445,7 +504,7 @@ export default function SettingsPage({ onDataReload }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".zip,.json"
+            accept=".zip,.json,.ZIP,.JSON,application/zip,application/json"
             style={{ display: 'none' }}
             onChange={handleFileSelect}
             id="backup-file-input"

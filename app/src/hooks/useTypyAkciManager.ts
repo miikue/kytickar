@@ -9,6 +9,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
   const [typAkceIkona, setTypAkceIkona] = useState('💧');
   const [typAkceInterval, setTypAkceInterval] = useState('7');
   const [typAkceOdlozit, setTypAkceOdlozit] = useState('2');
+  const [typAkceIsWatering, setTypAkceIsWatering] = useState(false);
   const [typAkceMessage, setTypAkceMessage] = useState<string | null>(null);
 
   async function submitTypAkce(event: FormEvent) {
@@ -26,6 +27,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
           ikona: typAkceIkona,
           intervalDny: intervalVal,
           odlozitDny: odlozitVal,
+          isWatering: typAkceIsWatering,
         });
       } else {
         await createTypAkce({
@@ -33,6 +35,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
           ikona: typAkceIkona,
           intervalDny: intervalVal,
           odlozitDny: odlozitVal,
+          isWatering: typAkceIsWatering,
         });
       }
 
@@ -48,6 +51,7 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
       setTypAkceIkona('💧');
       setTypAkceInterval('7');
       setTypAkceOdlozit('2');
+      setTypAkceIsWatering(false);
       await reload();
     } catch (err) {
       setTypAkceMessage(err instanceof Error ? err.message : 'Uložení typu akce selhalo.');
@@ -89,6 +93,8 @@ export function useTypyAkciManager(reload: () => Promise<void>) {
     setTypAkceInterval,
     typAkceOdlozit,
     setTypAkceOdlozit,
+    typAkceIsWatering,
+    setTypAkceIsWatering,
     typAkceMessage,
     setTypAkceMessage,
     submitTypAkce,
