@@ -203,7 +203,20 @@ export const notificationService = {
     const careData = await localDb.getAllCareRemindersData();
     const { rostliny, typyAkci, historie, odlozene } = careData;
 
-    if (rostliny.length === 0) {
+    // Filtrujeme pouze živé rostliny
+    const activePlants = rostliny.filter((p) => (p.aktualniZdravi ?? 1) > 0);
+
+    if (activePlants.length === 0) {
+      await this.cancelAllReminders();
+      return { scheduledCount: 0, nextReminderDate: null };
+    }
+
+    // Identifikujeme typy akcí pro zalévání (notifikace se zaměřují výhradně na zalévání)
+    const wateringTypes = typyAkci.filter((t) => t.isWatering || isWateringAction(t));
+    const wateringTypeIds = new Set(wateringTypes.map((t) => t.id));
+    const primaryWateringType = wateringTypes[0];
+
+    if (!primaryWateringType) {
       await this.cancelAllReminders();
       return { scheduledCount: 0, nextReminderDate: null };
     }
@@ -213,73 +226,68 @@ export const notificationService = {
     const reminderHours = parseInt(hoursStr || '9', 10);
     const reminderMinutes = parseInt(minutesStr || '0', 10);
 
-    // 5. Analýza úkonů pro každou rostlinu
-    // Spočítáme pro každou rostlinu a typ akce přesné datum, kdy je úkon splatný (dueDate)
-    type DueTask = {
+    // 5. Analýza termínů zálivky pro každou živou rostlinu
+    type PlantWateringTask = {
       plantId: number;
       plantName: string;
-      actionName: string;
-      actionIcon: string;
-      isWatering: boolean;
       dueDate: Date;
     };
 
-    const dueTasks: DueTask[] = [];
+    const dueTasks: PlantWateringTask[] = [];
     const now = new Date();
 
-    for (const plant of rostliny) {
-      for (const typ of typyAkci) {
-        const intervalDny = typ.intervalDny || 7;
+    for (const plant of activePlants) {
+      const intervalDny = primaryWateringType.intervalDny || 7;
 
-        // Poslední provedení této akce
-        const plantHistory = historie
-          .filter((h) => h.rostlinaId === plant.id && h.typAkceId === typ.id)
-          .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
+      // Poslední provedení zálivky
+      const plantHistory = historie
+        .filter((h) => h.rostlinaId === plant.id && wateringTypeIds.has(h.typAkceId))
+        .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
 
-        const lastDate = plantHistory.length > 0
-          ? new Date(plantHistory[0].datum)
-          : new Date(plant.datumPorizeni || now.toISOString());
+      const lastDate = plantHistory.length > 0
+        ? new Date(plantHistory[0].datum)
+        : new Date(plant.datumPorizeni || now.toISOString());
 
-        // Kontrola aktivního odložení (snooze)
-        const activeSnooze = odlozene.find(
-          (o) => o.rostlinaId === plant.id && o.typAkceId === typ.id && new Date(o.datumPripomenuti) > lastDate
+      // Kontrola aktivního odložení (snooze)
+      const activeSnooze = odlozene.find(
+        (o) => o.rostlinaId === plant.id && wateringTypeIds.has(o.typAkceId) && new Date(o.datumPripomenuti) > lastDate
+      );
+
+      let dueDate: Date;
+      if (activeSnooze) {
+        dueDate = new Date(activeSnooze.datumPripomenuti);
+      } else {
+        dueDate = new Date(
+          lastDate.getFullYear(),
+          lastDate.getMonth(),
+          lastDate.getDate() + intervalDny,
+          reminderHours,
+          reminderMinutes,
+          0,
+          0
         );
-
-        let dueDate: Date;
-        if (activeSnooze) {
-          dueDate = new Date(activeSnooze.datumPripomenuti);
-        } else {
-          // Kalendářní přičtení dnů
-          dueDate = new Date(
-            lastDate.getFullYear(),
-            lastDate.getMonth(),
-            lastDate.getDate() + intervalDny,
-            lastDate.getHours(),
-            lastDate.getMinutes()
-          );
-        }
-
-        dueTasks.push({
-          plantId: plant.id,
-          plantName: plant.vlastniJmeno,
-          actionName: typ.typAkce,
-          actionIcon: typ.ikona || '🌱',
-          isWatering: isWateringAction(typ),
-          dueDate,
-        });
       }
+
+      dueTasks.push({
+        plantId: plant.id,
+        plantName: plant.vlastniJmeno,
+        dueDate,
+      });
     }
 
-    // 6. Seskupení úkolů do příštích 30 kalendářních dnů (den 0 = dnes, den 1 = zítra, ... den 30)
-    // Horizont prodloužen na 30 dní a úkoly po splatnosti se opakují každý den, dokud nejsou splněny!
+    // 6. Seskupení úkolů do příštích 30 kalendářních dnů
+    // - Pro každý den zjišťujeme, které rostliny mají termín zálivky
+    // - Opakování po termínu je omezeno na max. 2 dny (starší resty z minulých měsíců nespamují!)
+    // - Notifikace počítá a uvádí unikátní rostliny, nikoliv úkoly
+    const maxOverdueDays = 2;
     const notificationsToSchedule: any[] = [];
     let firstReminderDate: string | null = null;
 
     for (let dayOffset = 0; dayOffset <= 30; dayOffset++) {
-      // Kalendářní výpočet hranic dne nezávislý na posunech letního a zimního času (DST)
+      const targetDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 0, 0, 0, 0);
       const targetDayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 23, 59, 59, 999);
 
-      // Přesný čas odeslání notifikace v daný den (např. 09:00 ráno v místním čase daného dne)
+      // Přesný čas odeslání notifikace v daný den (např. 09:00 ráno)
       const scheduledDateTime = new Date(
         now.getFullYear(),
         now.getMonth(),
@@ -295,41 +303,51 @@ export const notificationService = {
         continue;
       }
 
-      // Úkoly, které jsou splatné k tomuto dni (včetně nevyřešených z předchozích dnů).
-      // Pokud úkol nebyl splněn, zůstává aktivní a připomíná se každý den!
-      const tasksForDay = dueTasks.filter((t) => t.dueDate <= targetDayEnd);
+      // Hranice pro prošlé zálivky (maximálně 2 dny před začátkem cílového dne)
+      const overdueCutoff = new Date(
+        targetDayStart.getFullYear(),
+        targetDayStart.getMonth(),
+        targetDayStart.getDate() - maxOverdueDays,
+        0,
+        0,
+        0,
+        0
+      );
 
-      if (tasksForDay.length > 0) {
-        let title = '🌿 Kytičkář – Čas na péči';
+      // Rostliny, které mají splatnost v daný den nebo max. 2 dny po termínu
+      const plantsForDay = dueTasks.filter(
+        (t) => t.dueDate >= overdueCutoff && t.dueDate <= targetDayEnd
+      );
+
+      if (plantsForDay.length > 0) {
+        // Deduplikace na unikátní rostliny
+        const uniquePlantsMap = new Map<number, string>();
+        for (const t of plantsForDay) {
+          uniquePlantsMap.set(t.plantId, t.plantName);
+        }
+
+        const plantIds = Array.from(uniquePlantsMap.keys());
+        const plantNames = Array.from(uniquePlantsMap.values());
+        const plantCount = plantIds.length;
+
+        let title = '🌿 Kytičkář – Čas na zálivku';
         let body = '';
         let actionTypeId: string | undefined;
-        const extra: any = { dayOffset };
+        const extra: any = { dayOffset, isWatering: true };
 
-        if (tasksForDay.length === 1) {
-          const t = tasksForDay[0];
-          title = `${t.actionIcon} ${t.plantName}`;
-          body = `Je čas na ${t.actionName.toLowerCase()}!`;
-          extra.plantId = t.plantId;
-          extra.isWatering = t.isWatering;
-          // Akční tlačítka pro jednu kytku: Zalito a Odložit
-          if (t.isWatering) {
-            actionTypeId = 'CARE_SINGLE_WATER';
-          }
-        } else if (tasksForDay.length <= 3) {
-          const summary = tasksForDay.map((t) => `${t.plantName} (${t.actionName.toLowerCase()})`).join(', ');
-          body = `Dnes potřebují péči: ${summary}`;
+        if (plantCount === 1) {
+          title = `💧 ${plantNames[0]}`;
+          body = 'Je čas na zálivku!';
+          extra.plantId = plantIds[0];
+          actionTypeId = 'CARE_SINGLE_WATER';
+        } else if (plantCount <= 3) {
+          body = `Dnes potřebují zalít: ${plantNames.join(', ')}`;
           actionTypeId = 'CARE_MULTIPLE';
-          extra.plantIds = tasksForDay.map((t) => t.plantId);
+          extra.plantIds = plantIds;
         } else {
-          const wateringCount = tasksForDay.filter((t) => t.isWatering).length;
-          const otherCount = tasksForDay.length - wateringCount;
-          if (wateringCount > 0 && otherCount > 0) {
-            body = `Dnes potřebuje zalít ${wateringCount} ${wateringCount === 1 ? 'kytička' : wateringCount < 5 ? 'kytičky' : 'kytiček'} a dalších ${otherCount} úkonů péče.`;
-          } else {
-            body = `Dnes čeká péče celkem ${tasksForDay.length} ${tasksForDay.length === 1 ? 'kytičku' : tasksForDay.length < 5 ? 'kytičky' : 'kytiček'}.`;
-          }
+          body = `Dnes čeká zálivka celkem ${plantCount} ${plantCount < 5 ? 'kytičky' : 'kytiček'}.`;
           actionTypeId = 'CARE_MULTIPLE';
-          extra.plantIds = tasksForDay.map((t) => t.plantId);
+          extra.plantIds = plantIds;
         }
 
         if (!firstReminderDate) {

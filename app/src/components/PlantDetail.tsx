@@ -20,6 +20,8 @@ type Props = {
   typyAkci: TypAkce[];
   selectedTypAkceId: string;
   setSelectedTypAkceId: (id: string) => void;
+  selectedNovaAkceDatum: string;
+  setSelectedNovaAkceDatum: (date: string) => void;
   novaAkceMessage: string | null;
   galerie: GalerieFotka[];
   historie: HistoriePece[];
@@ -60,6 +62,8 @@ const PlantDetail = forwardRef<HTMLElement, Props>(function PlantDetail(
     typyAkci,
     selectedTypAkceId,
     setSelectedTypAkceId,
+    selectedNovaAkceDatum,
+    setSelectedNovaAkceDatum,
     novaAkceMessage,
     galerie,
     historie,
@@ -268,7 +272,18 @@ const PlantDetail = forwardRef<HTMLElement, Props>(function PlantDetail(
                         );
                       })}
                     </select>
+                  </div>
 
+                  <div className="care-row-unified">
+                    <input
+                      type="date"
+                      className="care-date-unified"
+                      value={selectedNovaAkceDatum}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(event) => setSelectedNovaAkceDatum(event.target.value)}
+                      aria-label="Datum péče"
+                      title="Datum provedení péče (i zpětně)"
+                    />
                     <button className="care-execute-btn" type="submit" disabled={!selectedTypAkceId}>
                       Provést
                     </button>

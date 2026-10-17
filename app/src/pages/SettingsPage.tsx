@@ -271,7 +271,7 @@ export default function SettingsPage({ onDataReload }: Props) {
       await loadStats();
       setMessage({
         type: 'success',
-        text: 'Výchozí data byla úspěšně obnovena.',
+        text: 'Aplikace byla úspěšně vyčištěna do čistého výchozího stavu.',
       });
     } catch (err) {
       console.error('Chyba resetu:', err);
@@ -523,13 +523,13 @@ export default function SettingsPage({ onDataReload }: Props) {
         </div>
       </div>
 
-      {/* Reset to defaults */}
+      {/* Reset to clean defaults */}
       <div className="settings-card danger-card">
         <div className="settings-card-title-group">
-          <span className="settings-icon">⚠️</span>
+          <span className="settings-icon">🗑️</span>
           <div>
-            <h3 className="settings-card-title">Výchozí data</h3>
-            <p className="settings-card-desc">Vrátit aplikaci do původního ukázkového stavu</p>
+            <h3 className="settings-card-title">Vymazat data aplikace</h3>
+            <p className="settings-card-desc">Uvést aplikaci do čistého stavu (vymaže všechny kytky, fotky i katalogy)</p>
           </div>
         </div>
 
@@ -540,12 +540,12 @@ export default function SettingsPage({ onDataReload }: Props) {
             disabled={loading}
             onClick={() => setShowResetConfirm(true)}
           >
-            🔄 Obnovit výchozí data aplikace
+            🗑️ Vyčistit všechna data aplikace
           </button>
         ) : (
           <div className="reset-confirm-box">
             <p className="confirm-warning">
-              Opravdu chcete přepsat současná data výchozím balíčkem? Současné kytky a záznamy budou nahrazeny.
+              Opravdu chcete smazat všechna data a uvést aplikaci do čistého stavu? Všechny kytičky, záznamy i fotografie budou trvale smazány. (Data lze následně obnovit ze záložního ZIP balíčku).
             </p>
             <div className="confirm-buttons">
               <button
@@ -554,7 +554,7 @@ export default function SettingsPage({ onDataReload }: Props) {
                 disabled={loading}
                 onClick={handleReset}
               >
-                Ano, resetovat
+                Ano, vyčistit vše
               </button>
               <button
                 type="button"

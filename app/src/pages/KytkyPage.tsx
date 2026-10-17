@@ -54,6 +54,9 @@ export default function KytkyPage({
   const [historie, setHistorie] = useState<HistoriePece[]>([]);
   const [typyAkci, setTypyAkci] = useState<TypAkce[]>([]);
   const [selectedTypAkceId, setSelectedTypAkceId] = useState('');
+  const [selectedNovaAkceDatum, setSelectedNovaAkceDatum] = useState<string>(() =>
+    new Date().toISOString().split('T')[0],
+  );
   const [novaAkceMessage, setNovaAkceMessage] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -180,6 +183,7 @@ export default function KytkyPage({
       setSelectedUmisteniFilterId('all');
       setIsSearchExpanded(false);
       setIsDetailPhotoModalOpen(false);
+      setSelectedNovaAkceDatum(new Date().toISOString().split('T')[0]);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [resetTrigger]);
@@ -195,6 +199,7 @@ export default function KytkyPage({
         setSelectedTypAkceId('');
         setDetailError(null);
         setDetailLoading(false);
+        setSelectedNovaAkceDatum(new Date().toISOString().split('T')[0]);
         return;
       }
 
@@ -230,6 +235,7 @@ export default function KytkyPage({
           setHistorie(historieData);
           setTypyAkci(sortedTypy);
           setDetailError(null);
+          setSelectedNovaAkceDatum(new Date().toISOString().split('T')[0]);
           setSelectedTypAkceId((prev) => {
             if (!prev) {
               return defaultActionId;
@@ -542,17 +548,37 @@ export default function KytkyPage({
     }
 
     try {
-      await createHistoriePece({ rostlinaId: selectedId, typAkceId: Number(selectedTypAkceId) });
+      const todayStr = new Date().toISOString().split('T')[0];
+      let careDateIso: string;
+      if (!selectedNovaAkceDatum || selectedNovaAkceDatum === todayStr) {
+        careDateIso = new Date().toISOString();
+      } else {
+        careDateIso = new Date(`${selectedNovaAkceDatum}T12:00:00`).toISOString();
+      }
+
+      await createHistoriePece({
+        rostlinaId: selectedId,
+        typAkceId: Number(selectedTypAkceId),
+        datum: careDateIso,
+      });
+
       const actionObj = typyAkci.find((t) => String(t.id) === selectedTypAkceId);
       const actionName = actionObj?.typAkce || 'Akce';
       const actionIcon = actionObj?.ikona || (actionObj && isWateringAction(actionObj) ? '💧' : '✨');
-      setNovaAkceMessage(`${actionIcon} ${actionName} úspěšně zaznamenána!`);
+      const isPast = selectedNovaAkceDatum && selectedNovaAkceDatum < todayStr;
+      const dateSuffix = isPast
+        ? ` (${new Date(careDateIso).toLocaleDateString('cs-CZ')})`
+        : '';
+
+      setNovaAkceMessage(`${actionIcon} ${actionName} úspěšně zaznamenána${dateSuffix}!`);
       void logActivity({
         eventType: 'create',
         section: 'historie_pece',
-        label: `${actionName}: ${selectedRostlina?.vlastniJmeno || 'Rostlina'}`,
+        label: `${actionName}: ${selectedRostlina?.vlastniJmeno || 'Rostlina'}${dateSuffix}`,
         entityId: selectedId,
       }).catch(() => undefined);
+
+      setSelectedNovaAkceDatum(todayStr);
       const historieData = await fetchRostlinaHistorie(selectedId);
       setHistorie(historieData);
       await loadZalitiSummary();
@@ -687,6 +713,8 @@ export default function KytkyPage({
         typyAkci={typyAkci}
         selectedTypAkceId={selectedTypAkceId}
         setSelectedTypAkceId={setSelectedTypAkceId}
+        selectedNovaAkceDatum={selectedNovaAkceDatum}
+        setSelectedNovaAkceDatum={setSelectedNovaAkceDatum}
         novaAkceMessage={novaAkceMessage}
         galerie={galerie}
         historie={historie}

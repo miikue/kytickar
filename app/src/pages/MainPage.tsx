@@ -16,7 +16,6 @@ import { useTypyAkciManager } from '../hooks/useTypyAkciManager';
 import { logActivity } from '../api/activityApi';
 import { notificationService } from '../services/notificationService';
 import { localDb } from '../services/localDb';
-import { setPhotoUrlCache } from '../api/http';
 import { backButtonService } from '../services/backButtonService';
 import { useBackButton } from '../hooks/useBackButton';
 
@@ -96,20 +95,9 @@ export default function MainPage() {
             void handle.remove();
           };
         })
-        .catch(() => {});
     }
 
-    // 3. Předehřátí mezipaměti fotografií z IndexedDB
-    localDb
-      .getAllPhotos()
-      .then((photos) => {
-        for (const p of photos) {
-          if (p.dataUrl) setPhotoUrlCache(p.fileName, p.dataUrl);
-        }
-      })
-      .catch(() => {});
-
-    // 4. Inicializace globální obsluhy tlačítka Zpět
+    // 3. Inicializace globální obsluhy tlačítka Zpět
     backButtonService.init();
     const unsubscribeExitToast = backButtonService.onExitToastChange((show) => {
       setShowExitToast(show);

@@ -216,16 +216,13 @@ async function applyDataToStores(db: IDBDatabase, data: any): Promise<void> {
 }
 
 async function seedDbIfNeeded(db: IDBDatabase): Promise<void> {
-  const mediaCount = await new Promise<number>((res) => {
-    const tx = db.transaction('media', 'readonly');
-    const req = tx.objectStore('media').count();
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => res(0);
-  });
-
-  if (mediaCount > 0) return;
+  const isInitialized = typeof localStorage !== 'undefined' && localStorage.getItem('kytickar_db_initialized');
+  if (isInitialized) return;
 
   await applyDataToStores(db, (defaultData as any).data);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('kytickar_db_initialized', 'true');
+  }
 }
 
 export function getDefaultActionIcon(name: string): string {
@@ -323,10 +320,20 @@ async function pruneActivityLogIfNeeded(db: IDBDatabase): Promise<void> {
   }
 }
 
+function getAllKeysFromStore(db: IDBDatabase, storeName: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const request = store.getAllKeys();
+    request.onsuccess = () => resolve(((request.result || []) as any[]).map(String));
+    request.onerror = () => reject(request.error);
+  });
+}
+
 async function cleanupOrphanedPhotos(db: IDBDatabase): Promise<void> {
   try {
-    const [photos, galerie, druhy] = await Promise.all([
-      getAllFromStore<{ fileName: string; dataUrl: string }>(db, 'photos'),
+    const [photoKeys, galerie, druhy] = await Promise.all([
+      getAllKeysFromStore(db, 'photos'),
       getAllFromStore<GalerieFotka>(db, 'galerieFotky'),
       getAllFromStore<Druh>(db, 'druhy'),
     ]);
@@ -350,10 +357,10 @@ async function cleanupOrphanedPhotos(db: IDBDatabase): Promise<void> {
       }
     }
 
-    for (const p of photos) {
-      const clean = p.fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
-      if (!usedFileNames.has(p.fileName) && !usedFileNames.has(clean)) {
-        await deleteFromStore(db, 'photos', p.fileName);
+    for (const key of photoKeys) {
+      const clean = key.replace(/^(\/?species\/|\/?fotky\/)/, '');
+      if (!usedFileNames.has(key) && !usedFileNames.has(clean)) {
+        await deleteFromStore(db, 'photos', key);
       }
     }
   } catch (err) {
@@ -820,6 +827,24 @@ export const localDb = {
       datum: payload.datum ? new Date(payload.datum).toISOString() : new Date().toISOString(),
     });
     const typyAkci = await getAllFromStore<TypAkce>(db, 'typyAkci');
+    const currentTyp = typyAkci.find(t => t.id === Number(payload.typAkceId));
+    const isWatering = isWateringAction(currentTyp);
+
+    // Smazat případné odložení této péče pro danou rostlinu
+    const odlozene = await getAllFromStore<any>(db, 'odlozeneAkce');
+    const toRemove = odlozene.filter(o => {
+      if (o.rostlinaId !== Number(payload.rostlinaId)) return false;
+      if (o.typAkceId === Number(payload.typAkceId)) return true;
+      if (isWatering) {
+        const snoozeTyp = typyAkci.find(t => t.id === o.typAkceId);
+        return isWateringAction(snoozeTyp);
+      }
+      return false;
+    });
+    for (const item of toRemove) {
+      await deleteFromStore(db, 'odlozeneAkce', item.id);
+    }
+
     const created = await getFromStore<HistoriePece>(db, 'historiePece', id);
     notifyCareUpdated();
     return {

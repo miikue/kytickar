@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import TypAkceEditor from '../components/TypAkceEditor';
 import type { TypAkce } from '../types/app';
-import { getDefaultActionIcon } from '../services/localDb';
+import { getDefaultActionIcon, isWateringAction } from '../services/localDb';
 
 type Props = {
   typyAkci: TypAkce[];
@@ -65,7 +65,7 @@ export default function TypyAkciPage({
     setTypAkceIkona(item.ikona || getDefaultActionIcon(item.typAkce));
     setTypAkceInterval(item.intervalDny !== undefined && item.intervalDny !== null ? String(item.intervalDny) : '7');
     setTypAkceOdlozit(item.odlozitDny !== undefined && item.odlozitDny !== null ? String(item.odlozitDny) : '2');
-    setTypAkceIsWatering(Boolean(item.isWatering));
+    setTypAkceIsWatering(isWateringAction(item));
     setTypAkceMessage(null);
   }
 
@@ -181,7 +181,7 @@ export default function TypyAkciPage({
                   <h4 className="catalog-item-title">{item.typAkce}</h4>
                 </div>
                 <div className="catalog-item-tags-row">
-                  {item.isWatering ? (
+                  {isWateringAction(item) ? (
                     <span className="catalog-item-tag watering" title="Považováno za hlavní zálivku">
                       💧 Zálivka
                     </span>

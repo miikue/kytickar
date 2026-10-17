@@ -3,11 +3,18 @@ import { localDb } from '../services/localDb';
 export const DEFAULT_PLANT_ICON =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' width='48' height='48'><rect width='48' height='48' rx='12' fill='%23e8f5e9'/><path d='M24 10c0 0-10 6-10 16 0 7 5 11 10 11s10-4 10-11c0-10-10-16-10-16zm0 24c-3.5 0-7-2.5-7-8 0-6 7-11 7-11s7 5 7 11c0 5.5-3.5 8-7 8z' fill='%232e7d32'/><path d='M24 16v18' stroke='%232e7d32' stroke-width='2' stroke-linecap='round'/></svg>";
 
+const MAX_PHOTO_CACHE_SIZE = 50;
 const photoUrlCache = new Map<string, string>();
 const pendingLookups = new Set<string>();
 
 export function setPhotoUrlCache(fileName: string, dataUrl: string): void {
   const clean = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
+  if (photoUrlCache.has(clean)) {
+    photoUrlCache.delete(clean);
+  } else if (photoUrlCache.size >= MAX_PHOTO_CACHE_SIZE) {
+    const oldestKey = photoUrlCache.keys().next().value;
+    if (oldestKey) photoUrlCache.delete(oldestKey);
+  }
   photoUrlCache.set(clean, dataUrl);
   pendingLookups.delete(clean);
 }
@@ -47,7 +54,12 @@ export function getFileUrl(fileName: string | null | undefined): string {
   const cleanName = fileName.replace(/^(\/?species\/|\/?fotky\/)/, '');
 
   const cached = photoUrlCache.get(cleanName);
-  if (cached) return cached;
+  if (cached) {
+    // Obnova pozice v LRU keši
+    photoUrlCache.delete(cleanName);
+    photoUrlCache.set(cleanName, cached);
+    return cached;
+  }
 
   const fallbackUrl = fileName.startsWith('/') ? fileName : `/species/${cleanName}`;
 
@@ -61,17 +73,16 @@ export function getFileUrl(fileName: string | null | undefined): string {
     .then((dataUrl) => {
       pendingLookups.delete(cleanName);
       if (dataUrl) {
-        photoUrlCache.set(cleanName, dataUrl);
+        setPhotoUrlCache(cleanName, dataUrl);
         window.dispatchEvent(new CustomEvent('kytickar-photo-loaded', { detail: cleanName }));
       } else {
-        // Obrázek není v IndexedDB (jedná se o statickou fotografii druhu z bundle).
-        // Zapamatujeme si fallback URL, abychom při dalších renderech neprováděli zbytečné čtení z DB.
-        photoUrlCache.set(cleanName, fallbackUrl);
+        // Obrázek není v IndexedDB (statická fotografie druhu).
+        setPhotoUrlCache(cleanName, fallbackUrl);
       }
     })
     .catch(() => {
       pendingLookups.delete(cleanName);
-      photoUrlCache.set(cleanName, fallbackUrl);
+      setPhotoUrlCache(cleanName, fallbackUrl);
     });
 
   return fallbackUrl;
